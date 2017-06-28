@@ -1,5 +1,5 @@
 /*
- * Copyright © 2014-2016 Cask Data, Inc.
+ * Copyright © 2014-2017 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,10 +17,12 @@
 package co.cask.cdap.app.guice;
 
 import co.cask.cdap.api.data.stream.StreamWriter;
+import co.cask.cdap.app.runtime.NoOpProgramStateWriter;
 import co.cask.cdap.app.runtime.ProgramRunner;
 import co.cask.cdap.app.runtime.ProgramRunnerFactory;
 import co.cask.cdap.app.runtime.ProgramRuntimeProvider;
 import co.cask.cdap.app.runtime.ProgramRuntimeService;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.stream.DefaultStreamWriter;
 import co.cask.cdap.app.stream.StreamWriterFactory;
 import co.cask.cdap.common.conf.Constants;
@@ -39,6 +41,7 @@ import co.cask.cdap.internal.app.runtime.webapp.WebappProgramRunner;
 import co.cask.cdap.internal.app.runtime.worker.InMemoryWorkerRunner;
 import co.cask.cdap.internal.app.runtime.worker.WorkerProgramRunner;
 import co.cask.cdap.internal.app.runtime.workflow.WorkflowProgramRunner;
+import co.cask.cdap.internal.app.store.DirectStoreProgramStateWriter;
 import co.cask.cdap.proto.ProgramType;
 import com.google.inject.Inject;
 import com.google.inject.PrivateModule;
@@ -47,6 +50,7 @@ import com.google.inject.Singleton;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.multibindings.MapBinder;
 import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import org.apache.twill.api.ServiceAnnouncer;
 import org.apache.twill.common.Cancellable;
 import org.apache.twill.discovery.Discoverable;
@@ -87,6 +91,8 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     // For Binding queue stuff
     bind(QueueReaderFactory.class).in(Scopes.SINGLETON);
 
+    bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
+
     // Bind ProgramRunner
     MapBinder<ProgramType, ProgramRunner> runnerFactoryBinder =
       MapBinder.newMapBinder(binder(), ProgramType.class, ProgramRunner.class);
@@ -96,6 +102,10 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     runnerFactoryBinder.addBinding(ProgramType.WEBAPP).to(WebappProgramRunner.class);
     runnerFactoryBinder.addBinding(ProgramType.WORKER).to(InMemoryWorkerRunner.class);
     runnerFactoryBinder.addBinding(ProgramType.SERVICE).to(InMemoryServiceProgramRunner.class);
+
+    bind(ProgramStateWriter.class)
+      .annotatedWith(Names.named("programStateWriter"))
+      .to(NoOpProgramStateWriter.class);
 
     // Bind these three program runner in private scope
     // They should only be used by the ProgramRunners in the runnerFactoryBinder

@@ -66,7 +66,7 @@ public class WorkflowDataset extends AbstractDataset {
   }
 
   void write(WorkflowId id, RunRecordMeta runRecordMeta, List<ProgramRun> programRunList) {
-    long startTs = runRecordMeta.getStartTs();
+    long startTs = runRecordMeta.getRunTs();
 
     MDSKey mdsKey = getRowKeyBuilder(id, startTs).build();
     byte[] rowKey = mdsKey.getKey();
