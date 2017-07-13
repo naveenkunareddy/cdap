@@ -16,11 +16,13 @@
 
 package co.cask.cdap.internal.app.program;
 
+import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.AbstractProgramController;
+import co.cask.cdap.internal.app.runtime.workflow.WorkflowProgramController;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.ProgramRunId;
 import com.google.common.util.concurrent.Service;
@@ -54,13 +56,13 @@ public abstract class AbstractStateChangeProgramController extends AbstractProgr
         @Override
         public void completed() {
           LOG.debug("Program {} completed successfully.", programRunId);
-          programStateWriter.completed(programRunId);
+          programStateWriter.completed(programRunId, getWorkflowTokenFromController());
         }
 
         @Override
         public void killed() {
           LOG.debug("Program {} killed.", programRunId);
-          programStateWriter.killed(programRunId);
+          programStateWriter.killed(programRunId, getWorkflowTokenFromController());
         }
 
         @Override
@@ -78,10 +80,16 @@ public abstract class AbstractStateChangeProgramController extends AbstractProgr
         @Override
         public void error(Throwable cause) {
           LOG.info("Program {} stopped with error: {}", programRunId, cause);
-          programStateWriter.error(programRunId, cause);
+          programStateWriter.error(programRunId, getWorkflowTokenFromController(), cause);
         }
       },
       Threads.SAME_THREAD_EXECUTOR
     );
+  }
+
+  private WorkflowToken getWorkflowTokenFromController() {
+    return (this instanceof WorkflowProgramController) ?
+      ((WorkflowProgramController) this).getWorkflowToken() :
+      null;
   }
 }
