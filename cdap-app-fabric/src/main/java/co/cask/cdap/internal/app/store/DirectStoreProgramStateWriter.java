@@ -27,12 +27,9 @@ import co.cask.cdap.proto.BasicThrowable;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.ProgramRunId;
 import com.google.common.base.Supplier;
-import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nullable;
 
 /**
  * An implementation of the ProgramStateWriter that persists directly to the store

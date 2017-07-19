@@ -91,7 +91,12 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     // For Binding queue stuff
     bind(QueueReaderFactory.class).in(Scopes.SINGLETON);
 
+    // Bind ProgramStateWriter
     bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
+    // For programs with instances, make it NoOpProgramStateWriter so the InMemoryProgramRunner can record states once
+    bind(ProgramStateWriter.class)
+      .annotatedWith(Names.named("programStateWriter"))
+      .to(NoOpProgramStateWriter.class);
 
     // Bind ProgramRunner
     MapBinder<ProgramType, ProgramRunner> runnerFactoryBinder =
@@ -102,10 +107,6 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     runnerFactoryBinder.addBinding(ProgramType.WEBAPP).to(WebappProgramRunner.class);
     runnerFactoryBinder.addBinding(ProgramType.WORKER).to(InMemoryWorkerRunner.class);
     runnerFactoryBinder.addBinding(ProgramType.SERVICE).to(InMemoryServiceProgramRunner.class);
-
-    bind(ProgramStateWriter.class)
-      .annotatedWith(Names.named("programStateWriter"))
-      .to(NoOpProgramStateWriter.class);
 
     // Bind these three program runner in private scope
     // They should only be used by the ProgramRunners in the runnerFactoryBinder
