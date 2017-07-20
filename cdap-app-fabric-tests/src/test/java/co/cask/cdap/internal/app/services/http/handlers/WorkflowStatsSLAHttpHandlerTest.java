@@ -290,19 +290,21 @@ public class WorkflowStatsSLAHttpHandlerTest extends AppFabricTestBase {
     long startTime = System.currentTimeMillis();
     long currentTimeMillis;
 
-    // Time from program starting to program running
-    int turnoverTime = 0;
+    // Time in seconds from program starting to program running
+    int turnoverTime = 5;
 
     for (int i = 0; i < count; i++) {
       // work-flow runs every 5 minutes
-      currentTimeMillis = startTime + (i * TimeUnit.MINUTES.toMillis(5));
+      currentTimeMillis = startTime + (i * TimeUnit.MINUTES.toMillis(5)) - TimeUnit.SECONDS.toMillis(turnoverTime);
       RunId workflowRunId = RunIds.generate(currentTimeMillis);
       runIdList.add(workflowRunId);
       long startTimeProgram = RunIds.getTime(workflowRunId, TimeUnit.SECONDS);
       store.setStartAndRun(workflowProgram, workflowRunId.getId(), startTimeProgram, startTimeProgram + turnoverTime);
 
       // MR job starts 2 seconds after workflow started
-      RunId mapreduceRunid = RunIds.generate(currentTimeMillis + TimeUnit.SECONDS.toMillis(2));
+      RunId mapreduceRunid = RunIds.generate(currentTimeMillis
+                                             + TimeUnit.SECONDS.toMillis(2)
+                                             - TimeUnit.SECONDS.toMillis(turnoverTime));
       Map<String, String> systemArgs = ImmutableMap.of(ProgramOptionConstants.WORKFLOW_NODE_ID,
                                                        mapreduceProgram.getProgram(),
                                                        ProgramOptionConstants.WORKFLOW_NAME,
@@ -334,7 +336,9 @@ public class WorkflowStatsSLAHttpHandlerTest extends AppFabricTestBase {
       systemArgs = ImmutableMap.of(ProgramOptionConstants.WORKFLOW_NODE_ID, sparkProgram.getProgram(),
                                    ProgramOptionConstants.WORKFLOW_NAME, workflowProgram.getProgram(),
                                    ProgramOptionConstants.WORKFLOW_RUN_ID, workflowRunId.getId());
-      RunId sparkRunid = RunIds.generate(currentTimeMillis + TimeUnit.SECONDS.toMillis(20));
+      RunId sparkRunid = RunIds.generate(currentTimeMillis
+                                         + TimeUnit.SECONDS.toMillis(20)
+                                         - TimeUnit.SECONDS.toMillis(turnoverTime));
       startTimeProgram = RunIds.getTime(sparkRunid, TimeUnit.SECONDS);
       store.setStartAndRun(sparkProgram, sparkRunid.getId(), startTimeProgram, startTimeProgram + turnoverTime,
                            ImmutableMap.<String, String>of(), systemArgs);

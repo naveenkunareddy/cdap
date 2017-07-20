@@ -444,6 +444,11 @@ public class AppMetadataStore extends MetadataStoreDataset {
         LOG.error(msg);
         throw new IllegalArgumentException(msg);
       }
+      if (existing != null && runStatus != ProgramRunStatus.FAILED) {
+        // Throw an error if we are transitioning from starting to a non-failure state
+        throw new UnsupportedOperationException(String.format("Cannot record program %s in status %s",
+                                                              programId, runStatus));
+      }
       // Delete the started record, running record does not exist
       deleteAll(startedKey);
     } else {

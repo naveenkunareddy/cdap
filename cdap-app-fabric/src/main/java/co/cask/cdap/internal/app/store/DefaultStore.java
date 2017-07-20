@@ -336,7 +336,7 @@ public class DefaultStore implements Store {
             break;
           }
           programRunsList.add(new WorkflowDataset.ProgramRun(entry.getKey(), entry.getValue(),
-                                                             programType, stopTs - innerProgramRun.getRunTs()));
+                                                             programType, stopTs - innerProgramRun.getStartTs()));
         } else {
           workFlowNodeFailed = true;
           break;

@@ -130,6 +130,14 @@ public class DefaultStoreTest {
     store.setStop(programId, "runx", now, ProgramController.State.ERROR.getRunStatus());
   }
 
+  @Test(expected = UnsupportedOperationException.class)
+  public void testCompleteAfterStart() throws UnsupportedOperationException {
+    ProgramId programId = new ProgramId("account1", "invalidApp", ProgramType.FLOW, "InvalidFlowOperation");
+    long nowSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
+    store.setStart(programId, "runx", nowSecs, null, null, null);
+    store.setStop(programId, "runx", nowSecs + 5, ProgramController.State.COMPLETED.getRunStatus());
+  }
+
   @Test
   public void testDeleteSuspendedWorkflow() {
     NamespaceId namespaceId = new NamespaceId("namespace1");
@@ -381,6 +389,16 @@ public class DefaultStoreTest {
                                                       null, null);
     RunRecordMeta actualRecord6 = store.getRun(programId, run6.getId());
     Assert.assertEquals(expectedRecord6, actualRecord6);
+
+    // Record flow that starts but encounters error before it runs
+    RunId run7 = RunIds.fromString(UUID.randomUUID().toString());
+    Map<String, String> emptyArgs = ImmutableMap.of();
+    store.setStart(programId, run7.getId(), nowSecs, null, emptyArgs, null);
+    store.setStop(programId, run7.getId(), nowSecs + 1, ProgramController.State.ERROR.getRunStatus());
+    RunRecordMeta expectedRunRecord7 = new RunRecordMeta(run7.getId(), nowSecs, null, nowSecs + 1,
+                                                         ProgramRunStatus.FAILED, noRuntimeArgsProps, null, null);
+    RunRecordMeta actualRecord7 = store.getRun(programId, run7.getId());
+    Assert.assertEquals(expectedRunRecord7, actualRecord7);
 
     // Non-existent run record should give null
     Assert.assertNull(store.getRun(programId, UUID.randomUUID().toString()));
