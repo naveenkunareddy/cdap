@@ -473,7 +473,7 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
     Assert.assertTrue(run1DoneFile.createNewFile());
     Assert.assertTrue(run2DoneFile.createNewFile());
 
-    verifyProgramRuns(programId, "completed", 1);
+    verifyProgramRuns(programId, ProgramRunStatus.COMPLETED, 1);
     // delete the application
     deleteApp(programId.getApplication(), 200, 60, TimeUnit.SECONDS);
   }
