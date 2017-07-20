@@ -164,10 +164,11 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
 
     // start a flow and check the status
     startProgram(wordcountFlow1);
-    verifyProgramRuns(wordcountFlow1, ProgramRunStatus.RUNNING);
+    waitState(wordcountFlow1, RUNNING);
 
     // stop the flow and check the status
     stopProgram(wordcountFlow1);
+    waitState(wordcountFlow1, STOPPED);
     verifyProgramRuns(wordcountFlow1, ProgramRunStatus.KILLED);
 
     // deploy another app in a different namespace and verify
@@ -186,10 +187,11 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
 
     // start map-reduce and verify status
     startProgram(dummyMR2);
-    verifyProgramRuns(dummyMR2, ProgramRunStatus.RUNNING);
+    waitState(dummyMR2, RUNNING);
 
     // stop the mapreduce program and check the status
     stopProgram(dummyMR2);
+    waitState(dummyMR2, STOPPED);
     verifyProgramRuns(dummyMR2, ProgramRunStatus.KILLED);
 
     // start multiple runs of the map-reduce program
@@ -334,8 +336,11 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
     verifyProgramRuns(wordFrequencyService1, ProgramRunStatus.RUNNING);
 
     stopProgram(wordFrequencyService1, null, 200, null);
+    verifyProgramRuns(wordFrequencyService1, ProgramRunStatus.KILLED);
     stopProgram(wordFrequencyService2, null, 200, null);
+    verifyProgramRuns(wordFrequencyService2, ProgramRunStatus.KILLED);
     stopProgram(wordFrequencyServiceDefault, null, 200, null);
+    verifyProgramRuns(wordFrequencyServiceDefault, ProgramRunStatus.KILLED);
 
     Id.Artifact sleepWorkflowArtifactId = Id.Artifact.from(Id.Namespace.DEFAULT, "sleepworkflowapp", VERSION1);
     addAppArtifact(sleepWorkflowArtifactId, SleepingWorkflowApp.class);
@@ -626,6 +631,7 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
     Id.Program service2 = Id.Program.from(TEST_NAMESPACE2, APP_WITH_SERVICES_APP_ID,
                                           ProgramType.SERVICE, APP_WITH_SERVICES_SERVICE_NAME);
     startProgram(wordcountFlow1);
+    waitState(wordcountFlow1, RUNNING);
     verifyProgramRuns(wordcountFlow1, ProgramRunStatus.RUNNING);
 
     // test status API after starting the flow
@@ -638,6 +644,7 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
 
     // start the service
     startProgram(service2);
+    waitState(service2, RUNNING);
     verifyProgramRuns(service2, ProgramRunStatus.RUNNING);
     // test status API after starting the service
     response = doPost(statusUrl2, "[{'appId': 'AppWithServices', 'programType': 'Service', 'programId': " +
@@ -648,10 +655,12 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
 
     // stop the flow
     stopProgram(wordcountFlow1);
+    waitState(wordcountFlow1, STOPPED);
     verifyProgramRuns(wordcountFlow1, ProgramRunStatus.KILLED);
 
     // stop the service
     stopProgram(service2);
+    waitState(service2, STOPPED);
     verifyProgramRuns(service2, ProgramRunStatus.KILLED);
 
     // try posting a status request with namespace2 for apps in namespace1
@@ -944,6 +953,7 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
     Id.Program wordcountFlow1 =
       Id.Program.from(TEST_NAMESPACE1, WORDCOUNT_APP_NAME, ProgramType.FLOW, WORDCOUNT_FLOW_NAME);
     startProgram(wordcountFlow1);
+    waitState(wordcountFlow1, RUNNING);
     verifyProgramRuns(wordcountFlow1, ProgramRunStatus.RUNNING);
 
     liveInfo = getLiveInfo(TEST_NAMESPACE1, WORDCOUNT_APP_NAME, ProgramType.FLOW.getCategoryName(),
@@ -959,6 +969,7 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
 
     // stop
     stopProgram(wordcountFlow1);
+    waitState(wordcountFlow1, STOPPED);
     verifyProgramRuns(wordcountFlow1, ProgramRunStatus.KILLED);
 
     // delete queues
@@ -1058,6 +1069,8 @@ public class ProgramLifecycleHttpHandlerTest extends AppFabricTestBase {
         return getServiceAvailability(service2).getStatusLine().getStatusCode();
       }
     }, 2, TimeUnit.SECONDS, 10, TimeUnit.MILLISECONDS);
+
+    verifyProgramRuns(service2, ProgramRunStatus.RUNNING);
 
     // verify instances
     try {
