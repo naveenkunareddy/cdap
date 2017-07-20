@@ -340,6 +340,7 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
 
     // Workflow should be running
     waitState(programId, ProgramStatus.RUNNING.name());
+    verifyProgramRuns(programId, ProgramRunStatus.RUNNING);
 
     // Get runid for the running Workflow
     String runId = getRunIdOfRunningProgram(programId);
@@ -354,7 +355,7 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
     // Suspend the Workflow
     suspendWorkflow(programId, runId, 200);
 
-    // Workflow status hould be SUSPENDED
+    // Workflow status should be SUSPENDED
     waitState(programId, ProgramStatus.STOPPED.name());
 
     // Meta store information for this Workflow should reflect suspended run
@@ -1084,9 +1085,9 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
     }
 
     // Verify that there are two runs of the Workflow currently running.
-    List<RunRecord> historyRuns = getProgramRuns(programId, ProgramRunStatus.RUNNING);
-    Assert.assertEquals(2, historyRuns.size());
+    verifyProgramRuns(programId, ProgramRunStatus.RUNNING, 1);
 
+    List<RunRecord> historyRuns = getProgramRuns(programId, ProgramRunStatus.ALL);
     // Stop both Workflow runs.
     String runId = historyRuns.get(0).getPid();
     stopProgram(programId, runId, 200);
@@ -1101,6 +1102,8 @@ public class WorkflowHttpHandlerTest extends AppFabricTestBase {
     propertyMap = ImmutableMap.of("simple.action.file", instanceFile.getAbsolutePath(),
                                   "simple.action.donefile", doneFile.getAbsolutePath());
     startProgram(programId, propertyMap);
+    verifyProgramRuns(programId, ProgramRunStatus.RUNNING);
+
     while (!instanceFile.exists()) {
       TimeUnit.MILLISECONDS.sleep(50);
     }
