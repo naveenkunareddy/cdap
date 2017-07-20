@@ -324,30 +324,37 @@ public class AppMetadataStore extends MetadataStoreDataset {
   private void recordProgramRunning(ProgramId programId, String pid, long runTs, String twillRunId,
                                     MDSKey.Builder keyBuilder) {
     MDSKey key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId).add(pid).build();
-    RunRecordMeta started = get(key, RunRecordMeta.class);
+    RunRecordMeta existing = get(key, RunRecordMeta.class);
 
-    if (started == null) {
-      String msg = String.format("No meta for started run record for namespace %s app %s program type %s " +
-                                 "program %s pid %s exists",
-                                 programId.getNamespace(), programId.getApplication(), programId.getType().name(),
-                                 programId.getProgram(), pid);
-      LOG.error(msg);
-      throw new IllegalArgumentException(msg);
+    if (existing == null) {
+      // Program could have just resumed, so that means it should already have a running record
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId).add(pid).build();
+      existing = get(key, RunRecordMeta.class);
+
+      if (existing == null) {
+        // No started or running record exists, so throw an error
+        String msg = String.format("No meta for run record for namespace %s app %s program type %s " +
+                                   "program %s pid %s exists",
+                                   programId.getNamespace(), programId.getApplication(), programId.getType().name(),
+                                   programId.getProgram(), pid);
+        LOG.error(msg);
+        throw new IllegalArgumentException(msg);
+      }
     }
 
-    Map<String, String> systemArgs = started.getSystemArgs();
+    Map<String, String> systemArgs = existing.getSystemArgs();
     if (systemArgs != null && systemArgs.containsKey(ProgramOptionConstants.WORKFLOW_NAME)) {
       // Program was started by Workflow. Add row corresponding to its node state.
       addWorkflowNodeState(programId, pid, systemArgs, ProgramRunStatus.RUNNING, null);
     }
 
-    // Delete the starting run record
+    // Delete the old run record
     deleteAll(key);
 
     // Build the key for TYPE_RUN_RECORD_RUNNING
     key = keyBuilder.add(pid).build();
-    RunRecordMeta meta = new RunRecordMeta(pid, started.getStartTs(), runTs, null, ProgramRunStatus.RUNNING,
-                                           started.getProperties(), systemArgs, twillRunId);
+    RunRecordMeta meta = new RunRecordMeta(pid, existing.getStartTs(), runTs, null, ProgramRunStatus.RUNNING,
+                                           existing.getProperties(), systemArgs, twillRunId);
     write(key, meta);
   }
 
@@ -385,7 +392,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
     if (record == null) {
       String msg = String.format("No meta for %s run record for namespace %s app %s program type %s " +
-                                   "program %s pid %s exists", action.equals("suspend") ? "started" : "suspended",
+                                 "program %s pid %s exists", action.equals("suspend") ? "started" : "suspended",
                                  programId.getNamespace(), programId.getApplication(), programId.getType().name(),
                                  programId.getProgram(), pid);
       LOG.error(msg);
@@ -431,10 +438,10 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
     if (existing == null) {
       // Program could have started, but encountered an error before reaching the running state
-      MDSKey startedKey = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
-                            .add(pid)
-                            .build();
-      existing = getFirst(startedKey, RunRecordMeta.class);
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
+        .add(pid)
+        .build();
+      existing = getFirst(key, RunRecordMeta.class);
       if (existing == null) {
         // No started or running record exists, so throw an error
         String msg = String.format("No meta for run record for namespace %s app %s version %s program type %s " +
@@ -443,18 +450,14 @@ public class AppMetadataStore extends MetadataStoreDataset {
                                    programId.getType().name(), programId.getProgram(), pid);
         LOG.error(msg);
         throw new IllegalArgumentException(msg);
-      }
-      if (existing != null && runStatus != ProgramRunStatus.FAILED) {
+      } else if (runStatus != ProgramRunStatus.FAILED) {
         // Throw an error if we are transitioning from starting to a non-failure state
         throw new UnsupportedOperationException(String.format("Cannot record program %s in status %s",
                                                               programId, runStatus));
       }
-      // Delete the started record, running record does not exist
-      deleteAll(startedKey);
-    } else {
-      // Delete the running record, program terminated normally
-      deleteAll(key);
     }
+
+    deleteAll(key);
 
     // Record in the workflow
     Map<String, String> systemArgs = existing.getSystemArgs();
