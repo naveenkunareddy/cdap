@@ -291,6 +291,9 @@ public class TestFrameworkTestRun extends TestFrameworkTestBase {
     history = countService.getHistory(ProgramRunStatus.ALL);
     Assert.assertEquals(1, history.size());
     Assert.assertEquals(ProgramRunStatus.RUNNING, history.get(0).getStatus());
+
+    countService.stop();
+    countService.waitForRun(ProgramRunStatus.KILLED, 10, TimeUnit.SECONDS);
   }
 
   @Test
