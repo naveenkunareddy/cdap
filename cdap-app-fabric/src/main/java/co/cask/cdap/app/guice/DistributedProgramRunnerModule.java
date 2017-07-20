@@ -32,7 +32,6 @@ import co.cask.cdap.proto.ProgramType;
 import com.google.inject.PrivateModule;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.MapBinder;
-import com.google.inject.name.Names;
 
 /**
  * Guice module for distributed AppFabric. Used by the app-fabric server, not for distributed containers.
@@ -43,9 +42,6 @@ final class DistributedProgramRunnerModule extends PrivateModule {
   protected void configure() {
     // Bind ProgramStateWriter
     bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
-    bind(ProgramStateWriter.class)
-      .annotatedWith(Names.named("programStateWriter"))
-      .to(DirectStoreProgramStateWriter.class);
 
     // Bind ProgramRunner
     MapBinder<ProgramType, ProgramRunner> defaultProgramRunnerBinder =
