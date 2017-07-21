@@ -176,8 +176,6 @@ public class DistributedProgramRunnableModule {
           install(new DataFabricFacadeModule());
 
           bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
-          // For programs with multiple instances, disable the program state writer on
-          // each instance - program state recording will be done on the encompassing controller
           bind(ProgramStateWriter.class)
             .annotatedWith(Names.named("programStateWriter"))
             .to(NoOpProgramStateWriter.class);

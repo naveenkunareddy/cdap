@@ -400,6 +400,15 @@ public class DefaultStoreTest {
     RunRecordMeta actualRecord7 = store.getRun(programId, run7.getId());
     Assert.assertEquals(expectedRunRecord7, actualRecord7);
 
+    // Record flow that starts and suspends before it runs
+    RunId run8 = RunIds.fromString(UUID.randomUUID().toString());
+    store.setStart(programId, run8.getId(), nowSecs, null, emptyArgs, null);
+    store.setSuspend(programId, run8.getId());
+    RunRecordMeta expectedRunRecord8 = new RunRecordMeta(run8.getId(), nowSecs, null, null,
+                                                         ProgramRunStatus.SUSPENDED, noRuntimeArgsProps, null, null);
+    RunRecordMeta actualRecord8 = store.getRun(programId, run8.getId());
+    Assert.assertEquals(expectedRunRecord8, actualRecord8);
+
     // Non-existent run record should give null
     Assert.assertNull(store.getRun(programId, UUID.randomUUID().toString()));
 

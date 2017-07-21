@@ -391,6 +391,14 @@ public class AppMetadataStore extends MetadataStoreDataset {
       record = get(key, RunRecordMeta.class);
     }
 
+    // We can also suspend a workflow that is in the starting state
+    if (record == null && fromType.equals(TYPE_RUN_RECORD_RUNNING)) {
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
+        .add(pid)
+        .build();
+      record = get(key, RunRecordMeta.class);
+    }
+
     if (record == null) {
       String msg = String.format("No meta for %s run record for namespace %s app %s program type %s " +
                                  "program %s pid %s exists", action.equals("suspend") ? "running" : "suspended",
