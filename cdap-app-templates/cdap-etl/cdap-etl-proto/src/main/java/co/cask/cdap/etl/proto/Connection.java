@@ -28,15 +28,21 @@ public class Connection {
   private final String from;
   private final String to;
   private final String port;
+  private final Boolean condition;
 
   public Connection(String from, String to) {
     this(from, to, null);
   }
 
   public Connection(String from, String to, @Nullable String port) {
+    this(from, to, port, null);
+  }
+
+  public Connection(String from, String to, @Nullable String port, @Nullable Boolean condition) {
     this.from = from;
     this.to = to;
     this.port = port;
+    this.condition = condition;
   }
 
   public String getFrom() {
@@ -52,6 +58,11 @@ public class Connection {
     return port;
   }
 
+  @Nullable
+  public Boolean getCondition() {
+    return condition;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -63,12 +74,13 @@ public class Connection {
 
     Connection that = (Connection) o;
 
-    return Objects.equals(from, that.from) && Objects.equals(to, that.to) && Objects.equals(port, that.port);
+    return Objects.equals(from, that.from) && Objects.equals(to, that.to) && Objects.equals(port, that.port)
+      && Objects.equals(condition, that.condition);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(from, to, port);
+    return Objects.hash(from, to, port, condition);
   }
 
   @Override
@@ -77,6 +89,7 @@ public class Connection {
       "from='" + from + '\'' +
       ", to='" + to + '\'' +
       ", port='" + port + '\'' +
+      ", condition='" + condition + '\'' +
       '}';
   }
 }

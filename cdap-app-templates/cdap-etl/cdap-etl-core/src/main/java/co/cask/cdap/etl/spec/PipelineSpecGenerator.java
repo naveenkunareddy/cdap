@@ -32,6 +32,7 @@ import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.batch.BatchAggregator;
 import co.cask.cdap.etl.api.batch.BatchJoiner;
 import co.cask.cdap.etl.api.batch.BatchSource;
+import co.cask.cdap.etl.api.condition.Condition;
 import co.cask.cdap.etl.common.ArtifactSelectorProvider;
 import co.cask.cdap.etl.common.Constants;
 import co.cask.cdap.etl.common.DefaultPipelineConfigurer;
@@ -357,6 +358,7 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
     }
 
     Set<String> actionStages = new HashSet<>();
+    Set<String> conditionStages = new HashSet<>();
     Map<String, String> stageTypes = new HashMap<>();
     // check stage name uniqueness
     Set<String> stageNames = new HashSet<>();
@@ -370,10 +372,20 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
       if (isAction(stage.getPlugin().getType())) {
         actionStages.add(stage.getName());
       }
+      // if the stage is condition add it to the Condition stage set
+      if (stage.getPlugin().getType().equals(Condition.PLUGIN_TYPE)) {
+        conditionStages.add(stage.getName());
+      }
+
       stageTypes.put(stage.getName(), stage.getPlugin().getType());
     }
 
     // check that the from and to are names of actual stages
+    // also check that conditions have at most 2 outgoing connections each label with true or
+    // false but not both
+    Map<String, Boolean> conditionBranch = new HashMap<>();
+    Map<String, Set<String>> outgoingConnections = new HashMap<>();
+    Map<String, Set<String>> incomingConnections = new HashMap<>();
     for (Connection connection : config.getConnections()) {
       if (!stageNames.contains(connection.getFrom())) {
         throw new IllegalArgumentException(
@@ -383,7 +395,36 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
         throw new IllegalArgumentException(
           String.format("Invalid connection %s. %s is not a stage.", connection, connection.getTo()));
       }
+
+      if (conditionStages.contains(connection.getFrom())) {
+        if (connection.getCondition() == null) {
+          String msg = String.format("For condition stage %s, the connection %s is not marked with either " +
+                                       "'true' or 'false'.", connection.getFrom(), connection);
+          throw new IllegalArgumentException(msg);
+        }
+
+        // check if connection from the condition node is marked as true or false multiple times
+        if (conditionBranch.containsKey(connection.getFrom())
+          && connection.getCondition().equals(conditionBranch.get(connection.getFrom()))) {
+          String msg = String.format("For condition stage '%s', more than one outgoing connections are marked as %s.",
+                                     connection.getFrom(), connection.getCondition());
+          throw new IllegalArgumentException(msg);
+        }
+        conditionBranch.put(connection.getFrom(), connection.getCondition());
+      }
+
+      if (outgoingConnections.get(connection.getFrom()) == null) {
+        outgoingConnections.put(connection.getFrom(), new HashSet<String>());
+      }
+      outgoingConnections.get(connection.getFrom()).add(connection.getTo());
+
+      if (incomingConnections.get(connection.getTo()) == null) {
+        incomingConnections.put(connection.getTo(), new HashSet<String>());
+      }
+      incomingConnections.get(connection.getTo()).add(connection.getFrom());
     }
+
+    validateConditionBranches(conditionStages, incomingConnections, outgoingConnections);
 
     List<ETLStage> traversalOrder = new ArrayList<>(stageNames.size());
 
@@ -484,4 +525,76 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
     }
   }
 
+  /**
+   * Make sure that the stages on the condition branches do not have more than one incoming connections
+   * @param conditionStages the set of condition stages in the pipeline
+   * @param incomingConnections the map of stage to the set of stages from which there is an incoming connection
+   * @param outgoingConnections the map of stage to the set of stages to which there is an outgoing connection
+   */
+  private void validateConditionBranches(Set<String> conditionStages, Map<String, Set<String>> incomingConnections,
+                                         Map<String, Set<String>> outgoingConnections) {
+    for (String conditionStage : conditionStages) {
+      // Get the output connection stages for this condition. Should be max 2
+      Set<String> outputs = outgoingConnections.get(conditionStage);
+      if (outputs == null || outputs.size() > 2) {
+        String msg = String.format("Condition stage in the pipeline '%s' should have at least 1 and at max 2 " +
+                                     "outgoing connections corresponding to 'true' and 'false' branches " +
+                                     "but found '%s'.", conditionStage, outputs == null ? 0 : outputs.size());
+        throw new IllegalArgumentException(msg);
+      }
+      for (String output : outputs) {
+        // Check that each stage in this branch starting from output has only one incoming connection
+        validateSingleInput(conditionStage, output, incomingConnections, outgoingConnections);
+      }
+    }
+  }
+
+  /**
+   * Current stage can only have either one incoming connection if its one of the stage on the condition branch or
+   * two incoming connections if it is condition stopper stage. We do not allow cross connections from sources.
+   */
+  private void validateSingleInput(String currentCondition, String currentStage,
+                                   Map<String, Set<String>> incomingConnections,
+                                   Map<String, Set<String>> outgoingConnections) {
+    if (incomingConnections.get(currentStage).size() > 1
+      && pathToSourceExists(currentCondition, currentStage, incomingConnections)) {
+      String msg = String.format("Stage in the pipeline '%s' is on the condition branch but have more " +
+                                   "than one incoming connections.", currentStage);
+      throw new IllegalArgumentException(msg);
+    }
+
+    Set<String> outputStages = outgoingConnections.get(currentStage);
+    if (outputStages == null) {
+      // We reached sink. simply return
+      return;
+    }
+    for (String output : outputStages) {
+      validateSingleInput(currentCondition, output, incomingConnections, outgoingConnections);
+    }
+  }
+
+  /**
+   * This method is responsible for determining if there is a path to the source node exists from the
+   * currentStage which is on currentCondition branch. If path to the source exists (which is not going through
+   * currentCondition) then it is an invalid configuration.
+   */
+  private boolean pathToSourceExists(String currentCondition, String currentStage,
+                                     Map<String, Set<String>> incomingConnections) {
+    Set<String> inputStages = incomingConnections.get(currentStage);
+    if (inputStages == null) {
+      // We reached source which is not through current condition
+      return true;
+    }
+
+    for (String stage : inputStages) {
+      if (stage.equals(currentCondition)) {
+        // short circuit the current condition
+        continue;
+      }
+      if (pathToSourceExists(currentCondition, stage, incomingConnections)) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
