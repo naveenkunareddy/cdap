@@ -327,7 +327,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
     RunRecordMeta existing = get(key, RunRecordMeta.class);
 
     if (existing == null) {
-      // Program could have just resumed, so that means it should already have a running record
+      // No starting record, but program could have just resumed, so it should already have a running record
       key = getProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId).add(pid).build();
       existing = get(key, RunRecordMeta.class);
 
@@ -353,6 +353,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
     // Build the key for TYPE_RUN_RECORD_RUNNING
     key = keyBuilder.add(pid).build();
+    // The existing record's properties already contains the workflowRunId
     RunRecordMeta meta = new RunRecordMeta(pid, existing.getStartTs(), runTs, null, ProgramRunStatus.RUNNING,
                                            existing.getProperties(), systemArgs, twillRunId);
     write(key, meta);
@@ -437,7 +438,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
     }
 
     if (existing == null) {
-      // Program could have started, but encountered an error before reaching the running state
+      // No running record, so program could have started, but encountered an error before reaching the running state
       key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
         .add(pid)
         .build();
@@ -451,7 +452,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
         LOG.error(msg);
         throw new IllegalArgumentException(msg);
       } else if (runStatus != ProgramRunStatus.FAILED) {
-        // Throw an error if we are transitioning from starting to a non-failure state
+        // Not possible to transition from starting to a non-failure state
         throw new UnsupportedOperationException(String.format("Cannot record program %s in status %s",
                                                               programId, runStatus));
       }
@@ -485,9 +486,9 @@ public class AppMetadataStore extends MetadataStoreDataset {
     return resultMap;
   }
 
-  public  Map<ProgramRunId, RunRecordMeta> getRuns(@Nullable ProgramId programId, final ProgramRunStatus status,
-                                                   long startTime, long endTime, int limit,
-                                                   @Nullable Predicate<RunRecordMeta> filter) {
+  public Map<ProgramRunId, RunRecordMeta> getRuns(@Nullable ProgramId programId, final ProgramRunStatus status,
+                                                  long startTime, long endTime, int limit,
+                                                  @Nullable Predicate<RunRecordMeta> filter) {
     switch(status) {
       case ALL:
         Map<ProgramRunId, RunRecordMeta> runRecords =  new LinkedHashMap<>();
@@ -518,9 +519,9 @@ public class AppMetadataStore extends MetadataStoreDataset {
     }
 
     // Then query for started run record
-    running = getUnfinishedRun(program, TYPE_RUN_RECORD_STARTED, runid);
-    if (running != null) {
-      return running;
+    RunRecordMeta starting = getUnfinishedRun(program, TYPE_RUN_RECORD_STARTED, runid);
+    if (starting != null) {
+      return starting;
     }
 
     // If program is not running, query completed run records

@@ -87,7 +87,10 @@ final class WorkflowProgramController extends AbstractStateChangeProgramControll
       @Override
       public void terminated(Service.State from) {
         LOG.debug("Workflow service terminated from {}. Un-registering service {}.", from, serviceName);
-        cancelAnnounce.cancel();
+        if (cancelAnnounce != null) {
+          // cancelAnnounce could be null if there was an exception thrown before it enters the RUNNING state
+          cancelAnnounce.cancel();
+        }
         LOG.debug("Service {} unregistered.", serviceName);
         if (getState() != State.STOPPING) {
           // service completed itself.
@@ -102,8 +105,7 @@ final class WorkflowProgramController extends AbstractStateChangeProgramControll
       public void failed(Service.State from, Throwable failure) {
         LOG.error("Workflow service '{}' failed.", serviceName, failure);
         if (cancelAnnounce != null) {
-          // if there is an exception before workflow enters into the RUNNING state, cancelAnnounce will be null
-          // since it is initialized in the running method
+          // cancelAnnounce could be null if there was an exception thrown before it enters the RUNNING state
           cancelAnnounce.cancel();
         }
         LOG.info("Service {} unregistered.", serviceName);

@@ -68,9 +68,8 @@ public class ProgramLifecycleServiceTest extends AppFabricTestBase {
     String pid = deployProgramAndInvalidate(wordcountFlow1);
     int failureRuns = getProgramRuns(wordcountFlow1, ProgramRunStatus.FAILED.toString()).size();
 
-    // Use the store manipulate state to be RUNNING
-    long now = System.currentTimeMillis();
-    long nowSecs = TimeUnit.MILLISECONDS.toSeconds(now);
+    // Use the store to manipulate state to be RUNNING
+    long nowSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
     store.setStartAndRun(wordcountFlow1.toEntityId(), pid, nowSecs, nowSecs + 1);
 
     // Now check again via Store to assume data store is wrong.
@@ -78,7 +77,7 @@ public class ProgramLifecycleServiceTest extends AppFabricTestBase {
     Assert.assertNotNull(runRecordMeta);
     Assert.assertEquals(ProgramRunStatus.RUNNING, runRecordMeta.getStatus());
 
-    // Verify there is NO FAILED run record for the application
+    // Verify there are no new failed run record for the application
     List<RunRecord> runRecords = getProgramRuns(wordcountFlow1, ProgramRunStatus.FAILED.toString());
     Assert.assertEquals(failureRuns, runRecords.size());
 
@@ -101,17 +100,17 @@ public class ProgramLifecycleServiceTest extends AppFabricTestBase {
     int failureRuns = getProgramRuns(wordcountFlow1, ProgramRunStatus.FAILED.toString()).size();
 
     // Use the store to manipulate starting state to be five minutes ago
-    long nowSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())
-                    - TimeUnit.MINUTES.toSeconds(5);
+    long fiveMinutesAgo = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())
+                          - TimeUnit.MINUTES.toSeconds(5);
 
-    store.setStart(wordcountFlow1.toEntityId(), pid, nowSecs, null, EMPTY_STRING_MAP, EMPTY_STRING_MAP);
+    store.setStart(wordcountFlow1.toEntityId(), pid, fiveMinutesAgo, null, EMPTY_STRING_MAP, EMPTY_STRING_MAP);
 
     // Now check again via Store to assume data store is wrong.
     RunRecord runRecordMeta = store.getRun(wordcountFlow1.toEntityId(), pid);
     Assert.assertNotNull(runRecordMeta);
     Assert.assertEquals(ProgramRunStatus.STARTING, runRecordMeta.getStatus());
 
-    // Verify there is NO FAILED run record for the application
+    // Verify there are no new failed run records for the application
     List<RunRecord> runRecords = getProgramRuns(wordcountFlow1, ProgramRunStatus.FAILED.toString());
     Assert.assertEquals(failureRuns, runRecords.size());
 

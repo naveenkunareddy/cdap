@@ -93,7 +93,8 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
 
     // Bind ProgramStateWriter
     bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
-    // For programs with instances, make it NoOpProgramStateWriter so the InMemoryProgramRunner can record states once
+    // For programs with multiple instances, disable the program state writer on the instances so that the higher
+    // controller can record the program state based on all of the instances
     bind(ProgramStateWriter.class)
       .annotatedWith(Names.named("programStateWriter"))
       .to(NoOpProgramStateWriter.class);

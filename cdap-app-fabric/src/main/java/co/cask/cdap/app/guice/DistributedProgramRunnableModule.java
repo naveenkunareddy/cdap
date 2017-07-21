@@ -17,6 +17,7 @@
 package co.cask.cdap.app.guice;
 
 import co.cask.cdap.api.data.stream.StreamWriter;
+import co.cask.cdap.app.runtime.NoOpProgramStateWriter;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.store.RuntimeStore;
 import co.cask.cdap.app.stream.DefaultStreamWriter;
@@ -175,9 +176,11 @@ public class DistributedProgramRunnableModule {
           install(new DataFabricFacadeModule());
 
           bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
+          // For programs with multiple instances, disable the program state writer on
+          // each instance - program state recording will be done on the encompassing controller
           bind(ProgramStateWriter.class)
             .annotatedWith(Names.named("programStateWriter"))
-            .to(DirectStoreProgramStateWriter.class);
+            .to(NoOpProgramStateWriter.class);
 
           bind(RuntimeStore.class).to(RemoteRuntimeStore.class);
 
