@@ -393,7 +393,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
     if (record == null) {
       String msg = String.format("No meta for %s run record for namespace %s app %s program type %s " +
-                                 "program %s pid %s exists", action.equals("suspend") ? "started" : "suspended",
+                                 "program %s pid %s exists", action.equals("suspend") ? "running" : "suspended",
                                  programId.getNamespace(), programId.getApplication(), programId.getType().name(),
                                  programId.getProgram(), pid);
       LOG.error(msg);
@@ -451,8 +451,9 @@ public class AppMetadataStore extends MetadataStoreDataset {
                                    programId.getType().name(), programId.getProgram(), pid);
         LOG.error(msg);
         throw new IllegalArgumentException(msg);
-      } else if (runStatus != ProgramRunStatus.FAILED) {
+      } else if (runStatus != ProgramRunStatus.FAILED && runStatus != ProgramRunStatus.KILLED) {
         // Not possible to transition from starting to a non-failure state
+        // Can transition from STARTING to KILLED because stopping a program maps to KILLED
         throw new UnsupportedOperationException(String.format("Cannot record program %s in status %s",
                                                               programId, runStatus));
       }
