@@ -28,14 +28,17 @@ import co.cask.cdap.app.runtime.ProgramClassLoaderProvider;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
-import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.runtime.spark.submit.DistributedSparkSubmitter;
 import co.cask.cdap.app.runtime.spark.submit.LocalSparkSubmitter;
 import co.cask.cdap.app.runtime.spark.submit.SparkSubmitter;
+import co.cask.cdap.app.store.RuntimeStore;
+import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.lang.FilterClassLoader;
 import co.cask.cdap.common.lang.InstantiatorFactory;
+import co.cask.cdap.common.service.Retries;
+import co.cask.cdap.common.service.RetryStrategies;
 import co.cask.cdap.data.ProgramContextAware;
 import co.cask.cdap.data2.dataset2.DatasetFramework;
 import co.cask.cdap.data2.transaction.stream.StreamAdmin;
@@ -47,11 +50,14 @@ import co.cask.cdap.internal.app.runtime.plugin.PluginInstantiator;
 import co.cask.cdap.internal.app.runtime.workflow.NameMappedDatasetFramework;
 import co.cask.cdap.internal.app.runtime.workflow.WorkflowProgramInfo;
 import co.cask.cdap.messaging.MessagingService;
+import co.cask.cdap.proto.BasicThrowable;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.security.spi.authentication.AuthenticationContext;
 import co.cask.cdap.security.spi.authorization.AuthorizationEnforcer;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.io.Closeables;
 import com.google.common.reflect.TypeToken;
@@ -98,7 +104,6 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
   private final AuthorizationEnforcer authorizationEnforcer;
   private final AuthenticationContext authenticationContext;
   private final MessagingService messagingService;
-  private final ProgramStateWriter programStateWriter;
 
   @Inject
   SparkProgramRunner(CConfiguration cConf, Configuration hConf, LocationFactory locationFactory,
@@ -107,7 +112,7 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
                      DiscoveryServiceClient discoveryServiceClient, StreamAdmin streamAdmin,
                      SecureStore secureStore, SecureStoreManager secureStoreManager,
                      AuthorizationEnforcer authorizationEnforcer, AuthenticationContext authenticationContext,
-                     MessagingService messagingService, ProgramStateWriter programStateWriter) {
+                     MessagingService messagingService) {
     super(cConf);
     this.cConf = cConf;
     this.hConf = hConf;
@@ -122,7 +127,6 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
     this.authorizationEnforcer = authorizationEnforcer;
     this.authenticationContext = authenticationContext;
     this.messagingService = messagingService;
-    this.programStateWriter = programStateWriter;
   }
 
   @Override
@@ -130,7 +134,6 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
     // Get the RunId first. It is used for the creation of the ClassLoader closing thread.
     Arguments arguments = options.getArguments();
     RunId runId = ProgramRunners.getRunId(options);
-    String twillRunId = options.getArguments().getOption(ProgramOptionConstants.TWILL_RUN_ID);
 
     Deque<Closeable> closeables = new LinkedList<>();
 
@@ -192,8 +195,7 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
                                                             runtimeContext, submitter);
 
       sparkRuntimeService.addListener(createRuntimeServiceListener(closeables), Threads.SAME_THREAD_EXECUTOR);
-      ProgramController controller = new SparkProgramController(sparkRuntimeService, runtimeContext,
-                                                                twillRunId, programStateWriter);
+      ProgramController controller = new SparkProgramController(sparkRuntimeService, runtimeContext);
 
       LOG.debug("Starting Spark Job. Context: {}", runtimeContext);
       if (SparkRuntimeContextConfig.isLocal(hConf) || UserGroupInformation.isSecurityEnabled()) {
@@ -252,7 +254,7 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
   }
 
   /**
-   * Creates a service listener to cleanup closeables on {@link SparkRuntimeService}.
+   * Creates a service listener to reactor on state changes on {@link SparkRuntimeService}.
    */
   private Service.Listener createRuntimeServiceListener(final Iterable<Closeable> closeables) {
     return new ServiceListenerAdapter() {

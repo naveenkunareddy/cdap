@@ -28,19 +28,19 @@ import co.cask.cdap.app.stream.StreamWriterFactory;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.discovery.ResolvingDiscoverable;
 import co.cask.cdap.internal.app.queue.QueueReaderFactory;
-import co.cask.cdap.internal.app.runtime.batch.MapReduceProgramRunner;
-import co.cask.cdap.internal.app.runtime.flow.FlowProgramRunner;
+import co.cask.cdap.internal.app.runtime.batch.InMemoryMapReduceProgramRunner;
 import co.cask.cdap.internal.app.runtime.flow.FlowletProgramRunner;
+import co.cask.cdap.internal.app.runtime.flow.InMemoryFlowProgramRunner;
 import co.cask.cdap.internal.app.runtime.service.InMemoryProgramRuntimeService;
 import co.cask.cdap.internal.app.runtime.service.InMemoryServiceProgramRunner;
 import co.cask.cdap.internal.app.runtime.service.ServiceProgramRunner;
+import co.cask.cdap.internal.app.runtime.webapp.InMemoryWebappProgramRunner;
 import co.cask.cdap.internal.app.runtime.webapp.IntactJarHttpHandler;
 import co.cask.cdap.internal.app.runtime.webapp.JarHttpHandler;
 import co.cask.cdap.internal.app.runtime.webapp.WebappHttpHandlerFactory;
-import co.cask.cdap.internal.app.runtime.webapp.WebappProgramRunner;
 import co.cask.cdap.internal.app.runtime.worker.InMemoryWorkerRunner;
 import co.cask.cdap.internal.app.runtime.worker.WorkerProgramRunner;
-import co.cask.cdap.internal.app.runtime.workflow.WorkflowProgramRunner;
+import co.cask.cdap.internal.app.runtime.workflow.InMemoryWorkflowProgramRunner;
 import co.cask.cdap.internal.app.store.DirectStoreProgramStateWriter;
 import co.cask.cdap.proto.ProgramType;
 import com.google.inject.Inject;
@@ -104,10 +104,10 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     // Bind ProgramRunner
     MapBinder<ProgramType, ProgramRunner> runnerFactoryBinder =
       MapBinder.newMapBinder(binder(), ProgramType.class, ProgramRunner.class);
-    runnerFactoryBinder.addBinding(ProgramType.FLOW).to(FlowProgramRunner.class);
-    runnerFactoryBinder.addBinding(ProgramType.MAPREDUCE).to(MapReduceProgramRunner.class);
-    runnerFactoryBinder.addBinding(ProgramType.WORKFLOW).to(WorkflowProgramRunner.class);
-    runnerFactoryBinder.addBinding(ProgramType.WEBAPP).to(WebappProgramRunner.class);
+    runnerFactoryBinder.addBinding(ProgramType.FLOW).to(InMemoryFlowProgramRunner.class);
+    runnerFactoryBinder.addBinding(ProgramType.MAPREDUCE).to(InMemoryMapReduceProgramRunner.class);
+    runnerFactoryBinder.addBinding(ProgramType.WORKFLOW).to(InMemoryWorkflowProgramRunner.class);
+    runnerFactoryBinder.addBinding(ProgramType.WEBAPP).to(InMemoryWebappProgramRunner.class);
     runnerFactoryBinder.addBinding(ProgramType.WORKER).to(InMemoryWorkerRunner.class);
     runnerFactoryBinder.addBinding(ProgramType.SERVICE).to(InMemoryServiceProgramRunner.class);
 

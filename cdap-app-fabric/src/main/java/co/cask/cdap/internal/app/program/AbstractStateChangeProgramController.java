@@ -84,4 +84,44 @@ public abstract class AbstractStateChangeProgramController extends AbstractProgr
       Threads.SAME_THREAD_EXECUTOR
     );
   }
+
+  public static Listener createProgramStateListener(final ProgramRunId programRunId, final String twillRunId,
+                                                    final ProgramStateWriter programStateWriter) {
+    return new AbstractListener() {
+      @Override
+      public void alive() {
+        programStateWriter.running(programRunId, twillRunId);
+      }
+
+      @Override
+      public void completed() {
+        LOG.debug("Program {} completed successfully.", programRunId);
+        programStateWriter.completed(programRunId);
+      }
+
+      @Override
+      public void killed() {
+        LOG.debug("Program {} killed.", programRunId);
+        programStateWriter.killed(programRunId);
+      }
+
+      @Override
+      public void suspended() {
+        LOG.debug("Suspending Program {} .", programRunId);
+        programStateWriter.suspend(programRunId);
+      }
+
+      @Override
+      public void resuming() {
+        LOG.debug("Resuming Program {}.", programRunId);
+        programStateWriter.resume(programRunId);
+      }
+
+      @Override
+      public void error(Throwable cause) {
+        LOG.info("Program {} stopped with error: {}", programRunId, cause);
+        programStateWriter.error(programRunId, cause);
+      }
+    };
+  }
 }

@@ -26,13 +26,16 @@ import co.cask.cdap.app.program.Program;
 import co.cask.cdap.app.runtime.Arguments;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
-import co.cask.cdap.app.runtime.ProgramStateWriter;
+import co.cask.cdap.app.store.RuntimeStore;
+import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.lang.InstantiatorFactory;
 import co.cask.cdap.common.lang.PropertyFieldSetter;
 import co.cask.cdap.common.logging.LoggingContextAccessor;
 import co.cask.cdap.common.namespace.NamespacedLocationFactory;
+import co.cask.cdap.common.service.Retries;
+import co.cask.cdap.common.service.RetryStrategies;
 import co.cask.cdap.data.ProgramContextAware;
 import co.cask.cdap.data2.dataset2.DatasetFramework;
 import co.cask.cdap.data2.transaction.stream.StreamAdmin;
@@ -47,11 +50,14 @@ import co.cask.cdap.internal.app.runtime.workflow.NameMappedDatasetFramework;
 import co.cask.cdap.internal.app.runtime.workflow.WorkflowProgramInfo;
 import co.cask.cdap.internal.lang.Reflections;
 import co.cask.cdap.messaging.MessagingService;
+import co.cask.cdap.proto.BasicThrowable;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.security.spi.authentication.AuthenticationContext;
 import co.cask.cdap.security.spi.authorization.AuthorizationEnforcer;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.io.Closeables;
 import com.google.common.reflect.TypeToken;
@@ -73,6 +79,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 /**
@@ -95,7 +102,6 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
   private final AuthorizationEnforcer authorizationEnforcer;
   private final AuthenticationContext authenticationContext;
   private final MessagingService messagingService;
-  private final ProgramStateWriter programStateWriter;
 
   @Inject
   public MapReduceProgramRunner(Injector injector, CConfiguration cConf, Configuration hConf,
@@ -108,8 +114,7 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
                                 SecureStore secureStore, SecureStoreManager secureStoreManager,
                                 AuthorizationEnforcer authorizationEnforcer,
                                 AuthenticationContext authenticationContext,
-                                MessagingService messagingService,
-                                ProgramStateWriter programStateWriter) {
+                                MessagingService messagingService) {
     super(cConf);
     this.injector = injector;
     this.cConf = cConf;
@@ -125,7 +130,6 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
     this.authorizationEnforcer = authorizationEnforcer;
     this.authenticationContext = authenticationContext;
     this.messagingService = messagingService;
-    this.programStateWriter = programStateWriter;
   }
 
   @Override
@@ -143,7 +147,6 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
 
     Arguments arguments = options.getArguments();
     RunId runId = ProgramRunners.getRunId(options);
-    String twillRunId = options.getArguments().getOption(ProgramOptionConstants.TWILL_RUN_ID);
 
     WorkflowProgramInfo workflowInfo = WorkflowProgramInfo.create(arguments);
     DatasetFramework programDatasetFramework = workflowInfo == null ?
@@ -197,11 +200,9 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
                                                                     context, program.getJarLocation(), locationFactory,
                                                                     streamAdmin, txSystemClient, authorizationEnforcer,
                                                                     authenticationContext);
-
       mapReduceRuntimeService.addListener(createRuntimeServiceListener(closeables), Threads.SAME_THREAD_EXECUTOR);
 
-      ProgramController controller = new MapReduceProgramController(mapReduceRuntimeService, context,
-                                                                    twillRunId, programStateWriter);
+      final ProgramController controller = new MapReduceProgramController(mapReduceRuntimeService, context);
 
       LOG.debug("Starting MapReduce Job: {}", context);
       // if security is not enabled, start the job as the user we're using to access hdfs with.
@@ -222,10 +223,11 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
   }
 
   /**
-   * Creates a service listener to cleanup closeables on {@link MapReduceRuntimeService}.
+   * Creates a service listener to reactor on state changes on {@link MapReduceRuntimeService}.
    */
   private Service.Listener createRuntimeServiceListener(final Iterable<Closeable> closeables) {
     return new ServiceListenerAdapter() {
+
       @Override
       public void terminated(Service.State from) {
         closeAllQuietly(closeables);
