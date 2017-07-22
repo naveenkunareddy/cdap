@@ -40,6 +40,7 @@ import co.cask.cdap.proto.Containers;
 import co.cask.cdap.proto.DistributedProgramLiveInfo;
 import co.cask.cdap.proto.NotRunningProgramLiveInfo;
 import co.cask.cdap.proto.ProgramLiveInfo;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.ProgramId;
@@ -226,8 +227,8 @@ public final class DistributedProgramRuntimeService extends AbstractProgramRunti
     }
 
     final Set<RunId> twillRunIds = twillProgramInfo.columnKeySet();
-    Collection<RunRecordMeta> activeRunRecords = store.getActiveRuns(null, 0L, Long.MAX_VALUE, Integer.MAX_VALUE,
-                                                                     new Predicate<RunRecordMeta>() {
+    Collection<RunRecordMeta> activeRunRecords = store.getRuns(ProgramRunStatus.RUNNING,
+                                                               new Predicate<RunRecordMeta>() {
       @Override
       public boolean apply(RunRecordMeta record) {
         return record.getTwillRunId() != null

@@ -607,7 +607,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
     return getNonCompleteRuns(programId, TYPE_RUN_RECORD_SUSPENDED, startTime, endTime, limit, filter);
   }
 
-  public Map<ProgramRunId, RunRecordMeta> getActiveRuns(@Nullable ProgramId programId, final long startTime,
+  private Map<ProgramRunId, RunRecordMeta> getActiveRuns(@Nullable ProgramId programId, final long startTime,
                                                          final long endTime, int limit,
                                                          @Nullable Predicate<RunRecordMeta> filter) {
     Map<ProgramRunId, RunRecordMeta> activeRunRecords =
