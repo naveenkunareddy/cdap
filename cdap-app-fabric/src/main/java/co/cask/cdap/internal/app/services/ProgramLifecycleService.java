@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2017 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -37,14 +37,18 @@ import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.io.CaseInsensitiveEnumTypeAdapterFactory;
 import co.cask.cdap.common.security.AuthEnforce;
+import co.cask.cdap.common.service.Retries;
+import co.cask.cdap.common.service.RetryStrategies;
 import co.cask.cdap.config.PreferencesStore;
 import co.cask.cdap.internal.app.ApplicationSpecificationAdapter;
+import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.BasicArguments;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.SimpleProgramOptions;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramSchedule;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
 import co.cask.cdap.internal.app.store.RunRecordMeta;
+import co.cask.cdap.proto.BasicThrowable;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRecord;
@@ -67,6 +71,7 @@ import co.cask.cdap.security.spi.authorization.AuthorizationEnforcer;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.store.NamespaceStore;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableMap;
@@ -79,6 +84,7 @@ import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import org.apache.twill.api.RunId;
 import org.apache.twill.api.logging.LogEntry;
+import org.apache.twill.common.Threads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -786,10 +792,9 @@ public class ProgramLifecycleService extends AbstractIdleService {
                                            final Set<String> processedInvalidRunRecordIds) {
     final Map<RunId, RuntimeInfo> runIdToRuntimeInfo = runtimeService.list(programType);
 
-    // Includes programs with ProgramRunStatus.STARTING or ProgramRunStatus.RUNNING
     LOG.trace("Start getting run records not actually running ...");
-    Collection<RunRecordMeta> notActuallyRunning = store.getActiveRuns(null, 0L, Long.MAX_VALUE, Integer.MAX_VALUE,
-                                                                 new com.google.common.base.Predicate<RunRecordMeta>() {
+    Collection<RunRecordMeta> notActuallyRunning = store.getRuns(ProgramRunStatus.RUNNING,
+                                                           new com.google.common.base.Predicate<RunRecordMeta>() {
       @Override
       public boolean apply(RunRecordMeta input) {
         String runId = input.getPid();
@@ -809,6 +814,7 @@ public class ProgramLifecycleService extends AbstractIdleService {
           String runId = input.getPid();
           // check for program Id for the run record, if null then it is invalid program type.
           ProgramId targetProgramId = retrieveProgramIdForRunRecord(programType, runId);
+
           // Check if run id is for the right program type
           if (targetProgramId != null) {
             runIdToProgramId.put(runId, targetProgramId);
@@ -834,34 +840,14 @@ public class ProgramLifecycleService extends AbstractIdleService {
       }
     });
 
-    // don't correct run records for program that are still starting, give it time to be in the running state
-    invalidRunRecords = Collections2.filter(invalidRunRecords, new com.google.common.base.Predicate<RunRecordMeta>() {
-        @Override
-        public boolean apply(RunRecordMeta invalidRunRecordMeta) {
-          // Only filter out programs in ProgramRunStatus.STARTING
-          if (invalidRunRecordMeta.getStatus() != ProgramRunStatus.STARTING) {
-            return true;
-          }
-
-          long nowSec = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
-          if (invalidRunRecordMeta.getStartTs() + Constants.Retry.RUN_RECORD_START_PROGRAM_TIME_ALLOWANCE_SECONDS >
-              nowSec) {
-            LOG.trace("Will not correct invalid run record {} since it started {} seconds ago",
-                      invalidRunRecordMeta, nowSec - invalidRunRecordMeta.getStartTs());
-            return false;
-          }
-          return true;
-        }
-    });
-
     LOG.trace("End getting invalid run records.");
 
     if (!invalidRunRecords.isEmpty()) {
-      LOG.warn("Found {} active RunRecords and the program not actually running for " +
-               "program type {}", invalidRunRecords.size(), programType.getPrettyName());
+      LOG.warn("Found {} RunRecords with RUNNING status and the program not actually running for program type {}",
+               invalidRunRecords.size(), programType.getPrettyName());
     } else {
-      LOG.trace("No active RunRecords and the program not actually running for " +
-                "program type {}", programType.getPrettyName());
+      LOG.trace("No RunRecords found with RUNNING status and the program not actually running for program type {}",
+                programType.getPrettyName());
     }
 
     // Now lets correct the invalid RunRecords
@@ -869,12 +855,12 @@ public class ProgramLifecycleService extends AbstractIdleService {
       String runId = invalidRunRecordMeta.getPid();
       ProgramId targetProgramId = runIdToProgramId.get(runId);
 
-      // RunRecord could have a STARTING OR RUNNING state, update either to ERROR status
-      boolean updated = store.compareAndSetStatus(targetProgramId, runId, invalidRunRecordMeta.getStatus(),
+      boolean updated = store.compareAndSetStatus(targetProgramId, runId, ProgramController.State.ALIVE.getRunStatus(),
                                                   ProgramController.State.ERROR.getRunStatus());
       if (updated) {
-        LOG.warn("Fixed RunRecord {} for program {} with " + invalidRunRecordMeta.getStatus() + " because the " +
-                 "program was not actually active", runId, targetProgramId);
+        LOG.warn("Fixed RunRecord {} for program {} with RUNNING status because the program was not " +
+                   "actually running",
+                 runId, targetProgramId);
 
         processedInvalidRunRecordIds.add(runId);
       }
