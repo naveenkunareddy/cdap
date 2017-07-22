@@ -178,7 +178,7 @@ public class DistributedProgramRunnableModule {
           bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
           bind(ProgramStateWriter.class)
             .annotatedWith(Names.named("programStateWriter"))
-            .to(NoOpProgramStateWriter.class);
+            .to(ProgramStateWriter.class);
 
           bind(RuntimeStore.class).to(RemoteRuntimeStore.class);
 
