@@ -134,7 +134,7 @@ public abstract class AbstractProgramRuntimeService extends AbstractIdleService 
       return runtimeInfo;
     } catch (Exception e) {
       // Set the program state to an error when an exception is thrown
-      programStateWriter.error(programId.run(runId), new Throwable(e.getMessage()));
+      programStateWriter.error(programId.run(runId), e);
       cleanUpTask.run();
       LOG.error("Exception while trying to run program", e);
       throw Throwables.propagate(e);

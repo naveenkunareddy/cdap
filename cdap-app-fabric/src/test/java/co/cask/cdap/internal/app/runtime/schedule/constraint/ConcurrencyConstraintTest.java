@@ -85,7 +85,7 @@ public class ConcurrencyConstraintTest {
 
     // add a run for the program that wasn't from a schedule
     // there are now three concurrent runs, so the constraint will not be met
-    store.setStartAndRun(WORKFLOW_ID, pid3, System.currentTimeMillis(), 1);
+    store.setStartAndRun(WORKFLOW_ID, pid3, System.currentTimeMillis(), System.currentTimeMillis() + 1);
     assertSatisfied(false, concurrencyConstraint.check(schedule, constraintContext));
 
     // stop the first program; constraint will not be satisfied as there are still 2 running

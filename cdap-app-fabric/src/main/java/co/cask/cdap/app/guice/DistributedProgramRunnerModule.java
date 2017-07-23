@@ -41,7 +41,8 @@ final class DistributedProgramRunnerModule extends PrivateModule {
   @Override
   protected void configure() {
     // Bind ProgramStateWriter
-    // TODO when Twill handles program state change callbacks, replace with NoOpProgramStateWriter
+    // TODO when CDAP-12179 is resolved, the ProgramStateWriter will be in the DistributedProgramRunner, so the
+    // program runners will no longer need this binding
     bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
 
     // Bind ProgramRunner

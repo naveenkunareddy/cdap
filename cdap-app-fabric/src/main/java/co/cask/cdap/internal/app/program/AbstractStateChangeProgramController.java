@@ -39,48 +39,6 @@ public abstract class AbstractStateChangeProgramController extends AbstractProgr
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractStateChangeProgramController.class);
 
-  public AbstractStateChangeProgramController(Service service, final ProgramRunId programRunId, final String twillRunId,
-                                              final ProgramStateWriter programStateWriter,
-                                              @Nullable String componentName) {
-    super(programRunId.getParent(), RunIds.fromString(programRunId.getRun()), componentName);
-
-    service.addListener(
-      new ServiceListenerAdapter() {
-        @Override
-        public void starting() {
-          programStateWriter.running(programRunId, twillRunId);
-        }
-
-        @Override
-        public void terminated(Service.State from) {
-          ProgramRunStatus runStatus = ProgramController.State.COMPLETED.getRunStatus();
-          if (from == Service.State.STOPPING) {
-            // Service was killed
-            runStatus = ProgramController.State.KILLED.getRunStatus();
-          }
-          switch (runStatus) {
-            case COMPLETED:
-              programStateWriter.completed(programRunId);
-              break;
-            case KILLED:
-              programStateWriter.killed(programRunId);
-              break;
-            default:
-              // Will never reach this position
-              throw new UnsupportedOperationException(String.format("Cannot terminate program {} for status {}",
-                                                                    programRunId, runStatus));
-          }
-        }
-
-        @Override
-        public void failed(Service.State from, @Nullable final Throwable failure) {
-          programStateWriter.error(programRunId, failure);
-        }
-      },
-      Threads.SAME_THREAD_EXECUTOR
-    );
-  }
-
   public AbstractStateChangeProgramController(final ProgramRunId programRunId, final String twillRunId,
                                               final ProgramStateWriter programStateWriter,
                                               @Nullable String componentName) {
@@ -88,23 +46,6 @@ public abstract class AbstractStateChangeProgramController extends AbstractProgr
 
     addListener(
       new AbstractListener() {
-        @Override
-        public void init(ProgramController.State state, @Nullable Throwable cause) {
-          switch(state) {
-            case ALIVE:
-              alive();
-              break;
-            case COMPLETED:
-              completed();
-              break;
-            case ERROR:
-              error(cause);
-              break;
-            default:
-              super.init(state, cause);
-          }
-        }
-
         @Override
         public void alive() {
           programStateWriter.running(programRunId, twillRunId);
