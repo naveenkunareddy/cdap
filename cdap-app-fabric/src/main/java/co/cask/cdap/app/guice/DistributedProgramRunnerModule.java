@@ -41,7 +41,6 @@ final class DistributedProgramRunnerModule extends PrivateModule {
   @Override
   protected void configure() {
     // Bind ProgramStateWriter
-    // TODO when Twill handles program state change callbacks, replace with NoOpProgramStateWriter
     bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
 
     // Bind ProgramRunner

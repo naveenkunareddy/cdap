@@ -176,6 +176,8 @@ public class DistributedProgramRunnableModule {
           install(new DataFabricFacadeModule());
 
           bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
+          // TODO when CDAP-12179 is resolved, the ProgramStateWriter will be in the DistributedProgramRunner, so there
+          // will be no special case
           bind(ProgramStateWriter.class)
             .annotatedWith(Names.named("programStateWriter"))
             .to(ProgramStateWriter.class);

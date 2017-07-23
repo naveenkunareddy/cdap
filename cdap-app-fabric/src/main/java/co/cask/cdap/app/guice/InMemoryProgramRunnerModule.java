@@ -95,6 +95,8 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     bind(ProgramStateWriter.class).to(DirectStoreProgramStateWriter.class);
     // For programs with multiple instances, disable the program state writer on the instances so that the higher
     // controller can record the program state based on all of the instances
+    // TODO when CDAP-12179 is resolved, the ProgramStateWriter will be in the InMemoryProgramRunner, so there
+    // will be no special case
     bind(ProgramStateWriter.class)
       .annotatedWith(Names.named("programStateWriter"))
       .to(NoOpProgramStateWriter.class);
