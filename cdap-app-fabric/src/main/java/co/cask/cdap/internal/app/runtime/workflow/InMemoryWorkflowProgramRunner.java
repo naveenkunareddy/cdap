@@ -42,7 +42,7 @@ public class InMemoryWorkflowProgramRunner extends AbstractInMemoryProgramRunner
   @Override
   public ProgramController run(Program program, ProgramOptions options) {
     ProgramRunner runner = createProgramRunner();
-    return addListener(runner.run(program, options));
+    return addStateChangeListener(runner.run(program, options));
   }
 
   @Override

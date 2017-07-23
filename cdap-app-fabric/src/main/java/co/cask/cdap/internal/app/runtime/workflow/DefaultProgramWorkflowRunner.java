@@ -31,7 +31,7 @@ import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.runtime.WorkflowTokenProvider;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.conf.CConfiguration;
-import co.cask.cdap.internal.app.program.AbstractStateChangeProgramController;
+import co.cask.cdap.internal.app.program.StateChangeListener;
 import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.BasicArguments;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
@@ -163,8 +163,7 @@ final class DefaultProgramWorkflowRunner implements ProgramWorkflowRunner {
     }
 
     controller.addListener(
-      AbstractStateChangeProgramController.createProgramStateListener(program.getId().run(runId),
-                                                                      twillRunId, programStateWriter),
+      new StateChangeListener(program.getId().run(runId), twillRunId, programStateWriter),
       Threads.SAME_THREAD_EXECUTOR
     );
     blockForCompletion(closeable, controller);

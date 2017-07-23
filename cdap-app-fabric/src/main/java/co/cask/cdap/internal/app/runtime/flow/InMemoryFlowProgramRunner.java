@@ -23,7 +23,6 @@ import co.cask.cdap.app.runtime.ProgramRunner;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.internal.app.AbstractInMemoryProgramRunner;
-import co.cask.cdap.internal.app.runtime.worker.WorkerProgramRunner;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 
@@ -43,7 +42,7 @@ public class InMemoryFlowProgramRunner extends AbstractInMemoryProgramRunner {
   @Override
   public ProgramController run(Program program, ProgramOptions options) {
     ProgramRunner runner = createProgramRunner();
-    return addListener(runner.run(program, options));
+    return addStateChangeListener(runner.run(program, options));
   }
 
   @Override

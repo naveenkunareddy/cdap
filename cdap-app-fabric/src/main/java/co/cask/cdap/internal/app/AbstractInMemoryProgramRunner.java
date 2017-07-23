@@ -23,7 +23,7 @@ import co.cask.cdap.app.runtime.ProgramRunner;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.internal.app.program.AbstractStateChangeProgramController;
+import co.cask.cdap.internal.app.program.StateChangeListener;
 import co.cask.cdap.internal.app.runtime.AbstractListener;
 import co.cask.cdap.internal.app.runtime.AbstractProgramController;
 import co.cask.cdap.internal.app.runtime.BasicArguments;
@@ -89,7 +89,7 @@ public abstract class AbstractInMemoryProgramRunner implements ProgramRunner {
       }
 
       ProgramController controller = new InMemoryProgramController(components, program, runId, options);
-      return addListener(controller);
+      return addStateChangeListener(controller);
     } catch (Throwable t) {
       LOG.error("Failed to start all program instances", t);
       try {
@@ -110,10 +110,9 @@ public abstract class AbstractInMemoryProgramRunner implements ProgramRunner {
     }
   }
 
-  protected final ProgramController addListener(ProgramController controller) {
+  protected final ProgramController addStateChangeListener(ProgramController controller) {
     controller.addListener(
-      AbstractStateChangeProgramController.createProgramStateListener(controller.getProgramRunId(), null,
-                                                                      programStateWriter),
+      new StateChangeListener(controller.getProgramRunId(), null, programStateWriter),
       Threads.SAME_THREAD_EXECUTOR
     );
     return controller;
