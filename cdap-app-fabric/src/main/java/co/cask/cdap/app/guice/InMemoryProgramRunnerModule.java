@@ -29,6 +29,8 @@ import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.discovery.ResolvingDiscoverable;
 import co.cask.cdap.internal.app.queue.QueueReaderFactory;
 import co.cask.cdap.internal.app.runtime.batch.InMemoryMapReduceProgramRunner;
+import co.cask.cdap.internal.app.runtime.batch.MapReduceProgramRunner;
+import co.cask.cdap.internal.app.runtime.flow.FlowProgramRunner;
 import co.cask.cdap.internal.app.runtime.flow.FlowletProgramRunner;
 import co.cask.cdap.internal.app.runtime.flow.InMemoryFlowProgramRunner;
 import co.cask.cdap.internal.app.runtime.service.InMemoryProgramRuntimeService;
@@ -38,9 +40,11 @@ import co.cask.cdap.internal.app.runtime.webapp.InMemoryWebappProgramRunner;
 import co.cask.cdap.internal.app.runtime.webapp.IntactJarHttpHandler;
 import co.cask.cdap.internal.app.runtime.webapp.JarHttpHandler;
 import co.cask.cdap.internal.app.runtime.webapp.WebappHttpHandlerFactory;
+import co.cask.cdap.internal.app.runtime.webapp.WebappProgramRunner;
 import co.cask.cdap.internal.app.runtime.worker.InMemoryWorkerRunner;
 import co.cask.cdap.internal.app.runtime.worker.WorkerProgramRunner;
 import co.cask.cdap.internal.app.runtime.workflow.InMemoryWorkflowProgramRunner;
+import co.cask.cdap.internal.app.runtime.workflow.WorkflowProgramRunner;
 import co.cask.cdap.internal.app.store.DirectStoreProgramStateWriter;
 import co.cask.cdap.proto.ProgramType;
 import com.google.inject.Inject;
@@ -107,6 +111,10 @@ public final class InMemoryProgramRunnerModule extends PrivateModule {
     // Bind these three program runner in private scope
     // They should only be used by the ProgramRunners in the runnerFactoryBinder
     bind(FlowletProgramRunner.class);
+    bind(FlowProgramRunner.class);
+    bind(MapReduceProgramRunner.class);
+    bind(WorkflowProgramRunner.class);
+    bind(WebappProgramRunner.class);
     bind(ServiceProgramRunner.class);
     bind(WorkerProgramRunner.class);
 
