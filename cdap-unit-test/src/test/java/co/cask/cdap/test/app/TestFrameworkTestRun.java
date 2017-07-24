@@ -260,7 +260,7 @@ public class TestFrameworkTestRun extends TestFrameworkTestBase {
     Assert.assertEquals(0, history.size());
 
     countService.start();
-    Assert.assertTrue(countService.isRunning());
+    countService.waitForStatus(true);
     Assert.assertEquals(2, countService.getProvisionedInstances());
 
     // requesting with ProgramRunStatus.KILLED returns empty list

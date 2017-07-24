@@ -16,12 +16,9 @@
 
 package co.cask.cdap.app.runtime;
 
-import co.cask.cdap.app.program.ProgramDescriptor;
-import co.cask.cdap.proto.BasicThrowable;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.ProgramRunId;
 
-import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
@@ -30,9 +27,8 @@ import javax.annotation.Nullable;
 public interface ProgramStateWriter {
 
   /**
-   * Updates the program run's status to be {@link ProgramRunStatus#STARTING} at the given start time when
-   * the request to start a program has been received by
-   * {@link AbstractProgramRuntimeService#run(ProgramDescriptor, ProgramOptions)}
+   * Updates the program run's status to be {@link ProgramRunStatus#STARTING} at the start time given by the
+   * {@link ProgramRunId}
    *
    * @param programRunId the id of the program run
    * @param twillRunId the run id of the twill application
