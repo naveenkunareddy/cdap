@@ -31,14 +31,18 @@ public class Connection {
   private final Boolean condition;
 
   public Connection(String from, String to) {
-    this(from, to, null);
+    this(from, to, null, null);
   }
 
   public Connection(String from, String to, @Nullable String port) {
     this(from, to, port, null);
   }
 
-  public Connection(String from, String to, @Nullable String port, @Nullable Boolean condition) {
+  public Connection(String from, String to, Boolean condition) {
+    this(from, to, null, condition);
+  }
+
+  private Connection(String from, String to, @Nullable String port, @Nullable Boolean condition) {
     this.from = from;
     this.to = to;
     this.port = port;

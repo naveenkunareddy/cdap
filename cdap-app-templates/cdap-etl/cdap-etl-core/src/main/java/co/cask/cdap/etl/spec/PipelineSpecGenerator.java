@@ -424,8 +424,6 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
       incomingConnections.get(connection.getTo()).add(connection.getFrom());
     }
 
-    validateConditionBranches(conditionStages, incomingConnections, outgoingConnections);
-
     List<ETLStage> traversalOrder = new ArrayList<>(stageNames.size());
 
     // can only have empty connections if the pipeline consists of a single action.
@@ -492,6 +490,8 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
       stages.put(stageName, stage);
     }
 
+    validateConditionBranches(conditionStages, dag);
+
     for (String stageName : dag.getTopologicalOrder()) {
       traversalOrder.add(stages.get(stageName));
     }
@@ -528,14 +528,15 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
   /**
    * Make sure that the stages on the condition branches do not have more than one incoming connections
    * @param conditionStages the set of condition stages in the pipeline
-   * @param incomingConnections the map of stage to the set of stages from which there is an incoming connection
-   * @param outgoingConnections the map of stage to the set of stages to which there is an outgoing connection
+   * @param dag the dag of connections
+   * @throws IllegalArgumentException if there is an error in the configurations, for example condition stage
+   * is not configured correctly to have 'true' and 'false' branches or there are multiple incoming connections
+   * on the stages which are on condition branches
    */
-  private void validateConditionBranches(Set<String> conditionStages, Map<String, Set<String>> incomingConnections,
-                                         Map<String, Set<String>> outgoingConnections) {
+  private void validateConditionBranches(Set<String> conditionStages, Dag dag) {
     for (String conditionStage : conditionStages) {
       // Get the output connection stages for this condition. Should be max 2
-      Set<String> outputs = outgoingConnections.get(conditionStage);
+      Set<String> outputs = dag.getNodeOutputs(conditionStage);
       if (outputs == null || outputs.size() > 2) {
         String msg = String.format("Condition stage in the pipeline '%s' should have at least 1 and at max 2 " +
                                      "outgoing connections corresponding to 'true' and 'false' branches " +
@@ -544,7 +545,7 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
       }
       for (String output : outputs) {
         // Check that each stage in this branch starting from output has only one incoming connection
-        validateSingleInput(conditionStage, output, incomingConnections, outgoingConnections);
+        validateSingleInput(conditionStage, output, dag);
       }
     }
   }
@@ -553,48 +554,34 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
    * Current stage can only have either one incoming connection if its one of the stage on the condition branch or
    * two incoming connections if it is condition stopper stage. We do not allow cross connections from sources.
    */
-  private void validateSingleInput(String currentCondition, String currentStage,
-                                   Map<String, Set<String>> incomingConnections,
-                                   Map<String, Set<String>> outgoingConnections) {
-    if (incomingConnections.get(currentStage).size() > 1
-      && pathToSourceExists(currentCondition, currentStage, incomingConnections)) {
-      String msg = String.format("Stage in the pipeline '%s' is on the condition branch but have more " +
-                                   "than one incoming connections.", currentStage);
-      throw new IllegalArgumentException(msg);
+  private void validateSingleInput(String currentCondition, String currentStage, Dag dag) {
+    if (dag.getNodeInputs(currentStage).size() > 1) {
+      Set<String> stopNodes = new HashSet<>(dag.getSources());
+      stopNodes.add(currentCondition);
+      Set<String> parents = dag.parentsOf(currentStage, stopNodes);
+      parents.retainAll(dag.getSources());
+      if (parents.size() > 0) {
+        String paths = "";
+        for (String parent : parents) {
+          if (!paths.isEmpty()) {
+            paths = paths + ", ";
+          }
+          paths += parent + "->" + currentStage;
+        }
+        String msg = String.format("Stage in the pipeline '%s' is on the branch of condition '%s'. However it also " +
+                                     "has following incoming paths: '%s', which is not supported.", currentStage,
+                                   currentCondition, paths);
+        throw new IllegalArgumentException(msg);
+      }
     }
 
-    Set<String> outputStages = outgoingConnections.get(currentStage);
-    if (outputStages == null) {
+    Set<String> outputStages = dag.getNodeOutputs(currentStage);
+    if (outputStages.size() == 0) {
       // We reached sink. simply return
       return;
     }
     for (String output : outputStages) {
-      validateSingleInput(currentCondition, output, incomingConnections, outgoingConnections);
+      validateSingleInput(currentCondition, output, dag);
     }
-  }
-
-  /**
-   * This method is responsible for determining if there is a path to the source node exists from the
-   * currentStage which is on currentCondition branch. If path to the source exists (which is not going through
-   * currentCondition) then it is an invalid configuration.
-   */
-  private boolean pathToSourceExists(String currentCondition, String currentStage,
-                                     Map<String, Set<String>> incomingConnections) {
-    Set<String> inputStages = incomingConnections.get(currentStage);
-    if (inputStages == null) {
-      // We reached source which is not through current condition
-      return true;
-    }
-
-    for (String stage : inputStages) {
-      if (stage.equals(currentCondition)) {
-        // short circuit the current condition
-        continue;
-      }
-      if (pathToSourceExists(currentCondition, stage, incomingConnections)) {
-        return true;
-      }
-    }
-    return false;
   }
 }

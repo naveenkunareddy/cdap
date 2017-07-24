@@ -734,6 +734,46 @@ public class PipelineSpecGeneratorTest {
     specGenerator.generateSpec(etlConfig);
   }
 
+  @Test(expected = IllegalArgumentException.class)
+  public void testTwoConditionsGoingToSameStage() {
+
+    //  source--condition1-----t1-----condition2------t11------sink1
+    //             |                      |                     |
+    //             |                      |-----------t12--------
+    //             t2---------sink2                   |
+    //                                                |
+    //                                                |
+    //  anotherSource--------->condition3----------------------sink3
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(new ETLStage("source", MOCK_SOURCE))
+      .addStage(new ETLStage("anotherSource", MOCK_SOURCE))
+      .addStage(new ETLStage("condition1", MOCK_CONDITION))
+      .addStage(new ETLStage("condition2", MOCK_CONDITION))
+      .addStage(new ETLStage("condition3", MOCK_CONDITION))
+      .addStage(new ETLStage("t1", MOCK_TRANSFORM_A))
+      .addStage(new ETLStage("t11", MOCK_TRANSFORM_A))
+      .addStage(new ETLStage("t12", MOCK_TRANSFORM_A))
+      .addStage(new ETLStage("t2", MOCK_TRANSFORM_B))
+      .addStage(new ETLStage("sink1", MOCK_SINK))
+      .addStage(new ETLStage("sink2", MOCK_SINK))
+      .addStage(new ETLStage("sink3", MOCK_SINK))
+      .addConnection("source", "condition1")
+      .addConnection("condition1", "t1", true)
+      .addConnection("t1", "condition2")
+      .addConnection("condition2", "t11", false)
+      .addConnection("condition2", "t12", true)
+      .addConnection("condition1", "t2", false)
+      .addConnection("t11", "sink1")
+      .addConnection("t12", "sink1")
+      .addConnection("t2", "sink2")
+      .addConnection("anotherSource", "condition3")
+      .addConnection("condition3", "sink3", false)
+      .addConnection("condition3", "t12", true)
+      .build();
+    specGenerator.generateSpec(etlConfig);
+  }
+
   private static class MockSplitter implements MultiOutputPipelineConfigurable {
     private final Map<String, Schema> outputSchemas;
 
