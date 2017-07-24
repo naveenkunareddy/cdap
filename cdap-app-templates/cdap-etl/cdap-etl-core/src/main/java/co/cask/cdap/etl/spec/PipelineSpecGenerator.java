@@ -384,8 +384,6 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
     // also check that conditions have at most 2 outgoing connections each label with true or
     // false but not both
     Map<String, Boolean> conditionBranch = new HashMap<>();
-    Map<String, Set<String>> outgoingConnections = new HashMap<>();
-    Map<String, Set<String>> incomingConnections = new HashMap<>();
     for (Connection connection : config.getConnections()) {
       if (!stageNames.contains(connection.getFrom())) {
         throw new IllegalArgumentException(
@@ -412,16 +410,6 @@ public abstract class PipelineSpecGenerator<C extends ETLConfig, P extends Pipel
         }
         conditionBranch.put(connection.getFrom(), connection.getCondition());
       }
-
-      if (outgoingConnections.get(connection.getFrom()) == null) {
-        outgoingConnections.put(connection.getFrom(), new HashSet<String>());
-      }
-      outgoingConnections.get(connection.getFrom()).add(connection.getTo());
-
-      if (incomingConnections.get(connection.getTo()) == null) {
-        incomingConnections.put(connection.getTo(), new HashSet<String>());
-      }
-      incomingConnections.get(connection.getTo()).add(connection.getFrom());
     }
 
     List<ETLStage> traversalOrder = new ArrayList<>(stageNames.size());
