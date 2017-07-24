@@ -63,6 +63,7 @@ import javax.annotation.Nullable;
 public class WorkflowTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowTest.class);
+  private static final int startDelaySecs = 1; // Time between persisting a program as STARTING and RUNNING
 
   @ClassRule
   public static TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -107,7 +108,7 @@ public class WorkflowTest {
         long nowSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
         injector.getInstance(Store.class).setStartAndRun(controller.getProgramRunId().getParent(),
                                                          controller.getProgramRunId().getRun(),
-                                                         nowSecs, nowSecs + 1);
+                                                         nowSecs, nowSecs + startDelaySecs);
       }
 
       @Override
@@ -218,7 +219,7 @@ public class WorkflowTest {
         long nowSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
         injector.getInstance(Store.class).setStartAndRun(controller.getProgramRunId().getParent(),
                                                          controller.getProgramRunId().getRun(),
-                                                         nowSecs, nowSecs + 1);
+                                                         nowSecs, nowSecs + startDelaySecs);
       }
 
       @Override

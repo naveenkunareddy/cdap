@@ -130,14 +130,6 @@ public class DefaultStoreTest {
     store.setStop(programId, "runx", now, ProgramController.State.ERROR.getRunStatus());
   }
 
-  @Test(expected = UnsupportedOperationException.class)
-  public void testCompleteAfterStart() throws UnsupportedOperationException {
-    ProgramId programId = new ProgramId("account1", "invalidApp", ProgramType.FLOW, "InvalidFlowOperation");
-    long nowSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
-    store.setStart(programId, "runx", nowSecs, null, null, null);
-    store.setStop(programId, "runx", nowSecs + 5, ProgramController.State.COMPLETED.getRunStatus());
-  }
-
   @Test
   public void testDeleteSuspendedWorkflow() {
     NamespaceId namespaceId = new NamespaceId("namespace1");
@@ -267,25 +259,27 @@ public class DefaultStoreTest {
     // record finished flow
     ProgramId programId = new ProgramId("account1", "application1", ProgramType.FLOW, "flow1");
     long now = System.currentTimeMillis();
-    long nowSecs = TimeUnit.MILLISECONDS.toSeconds(now);
+    long startTimeSecs = TimeUnit.MILLISECONDS.toSeconds(now);
+    // Time after program has been marked started to be marked running
+    long startTimeDelaySecs = 1;
 
     RunId run1 = RunIds.generate(now - 20000);
-    store.setStartAndRun(programId, run1.getId(), runIdToSecs(run1), runIdToSecs(run1) + 1);
-    store.setStop(programId, run1.getId(), nowSecs - 10, ProgramController.State.ERROR.getRunStatus());
+    store.setStartAndRun(programId, run1.getId(), runIdToSecs(run1), runIdToSecs(run1) + startTimeDelaySecs);
+    store.setStop(programId, run1.getId(), startTimeSecs - 10, ProgramController.State.ERROR.getRunStatus());
 
     // record another finished flow
     RunId run2 = RunIds.generate(now - 10000);
-    store.setStartAndRun(programId, run2.getId(), runIdToSecs(run2), runIdToSecs(run2) + 1);
-    store.setStop(programId, run2.getId(), nowSecs - 5, ProgramController.State.COMPLETED.getRunStatus());
+    store.setStartAndRun(programId, run2.getId(), runIdToSecs(run2), runIdToSecs(run2) + startTimeDelaySecs);
+    store.setStop(programId, run2.getId(), startTimeSecs - 5, ProgramController.State.COMPLETED.getRunStatus());
 
     // record a suspended flow
     RunId run21 = RunIds.generate(now - 7500);
-    store.setStartAndRun(programId, run21.getId(), runIdToSecs(run21), runIdToSecs(run21) + 1);
+    store.setStartAndRun(programId, run21.getId(), runIdToSecs(run21), runIdToSecs(run21) + startTimeDelaySecs);
     store.setSuspend(programId, run21.getId());
 
     // record not finished flow
     RunId run3 = RunIds.generate(now);
-    store.setStartAndRun(programId, run3.getId(), runIdToSecs(run3), runIdToSecs(run3) + 1);
+    store.setStartAndRun(programId, run3.getId(), runIdToSecs(run3), runIdToSecs(run3) + startTimeDelaySecs);
 
     // For a RunRecordMeta that has not yet been completed, getStopTs should return null
     RunRecordMeta runRecord = store.getRun(programId, run3.getId());
@@ -296,7 +290,7 @@ public class DefaultStoreTest {
     ProgramId programId2 = new ProgramId("account1", "application1", ProgramType.FLOW, "flow2");
     RunId run4 = RunIds.generate(now - 5000);
     store.setStartAndRun(programId2, run4.getId(), runIdToSecs(run4), runIdToSecs(run4) + 1);
-    store.setStop(programId2, run4.getId(), nowSecs - 4, ProgramController.State.COMPLETED.getRunStatus());
+    store.setStop(programId2, run4.getId(), startTimeSecs - 4, ProgramController.State.COMPLETED.getRunStatus());
 
     // record for different account
     store.setStartAndRun(new ProgramId("account2", "application1", ProgramType.FLOW, "flow1"),
@@ -307,12 +301,12 @@ public class DefaultStoreTest {
                                                        0, Long.MAX_VALUE, Integer.MAX_VALUE);
 
     Map<ProgramRunId, RunRecordMeta> failureHistorymap = store.getRuns(programId, ProgramRunStatus.FAILED,
-                                                       nowSecs - 20, nowSecs - 10, Integer.MAX_VALUE);
+                                                       startTimeSecs - 20, startTimeSecs - 10, Integer.MAX_VALUE);
     Assert.assertEquals(failureHistorymap, store.getRuns(programId, ProgramRunStatus.FAILED,
                                                       0, Long.MAX_VALUE, Integer.MAX_VALUE));
 
     Map<ProgramRunId, RunRecordMeta> suspendedHistorymap = store.getRuns(programId, ProgramRunStatus.SUSPENDED,
-                                                         nowSecs - 20, nowSecs, Integer.MAX_VALUE);
+                                                         startTimeSecs - 20, startTimeSecs, Integer.MAX_VALUE);
 
     // only finished + succeeded runs should be returned
     Assert.assertEquals(1, successHistorymap.size());
@@ -323,13 +317,13 @@ public class DefaultStoreTest {
 
     // records should be sorted by start time latest to earliest
     RunRecordMeta run = successHistorymap.values().iterator().next();
-    Assert.assertEquals(nowSecs - 10, run.getStartTs());
-    Assert.assertEquals(Long.valueOf(nowSecs - 5), run.getStopTs());
+    Assert.assertEquals(startTimeSecs - 10, run.getStartTs());
+    Assert.assertEquals(Long.valueOf(startTimeSecs - 5), run.getStopTs());
     Assert.assertEquals(ProgramController.State.COMPLETED.getRunStatus(), run.getStatus());
 
     run = failureHistorymap.values().iterator().next();
-    Assert.assertEquals(nowSecs - 20, run.getStartTs());
-    Assert.assertEquals(Long.valueOf(nowSecs - 10), run.getStopTs());
+    Assert.assertEquals(startTimeSecs - 20, run.getStartTs());
+    Assert.assertEquals(Long.valueOf(startTimeSecs - 10), run.getStopTs());
     Assert.assertEquals(ProgramController.State.ERROR.getRunStatus(), run.getStatus());
 
     run = suspendedHistorymap.values().iterator().next();
@@ -337,13 +331,13 @@ public class DefaultStoreTest {
     Assert.assertEquals(ProgramController.State.SUSPENDED.getRunStatus(), run.getStatus());
 
     // Assert all history
-    Map<ProgramRunId, RunRecordMeta> allHistorymap = store.getRuns(programId, ProgramRunStatus.ALL,
-                                                   nowSecs - 20, nowSecs + 1, Integer.MAX_VALUE);
+    Map<ProgramRunId, RunRecordMeta> allHistorymap =
+      store.getRuns(programId, ProgramRunStatus.ALL, startTimeSecs - 20, startTimeSecs + 1, Integer.MAX_VALUE);
     Assert.assertEquals(allHistorymap.toString(), 4, allHistorymap.size());
 
     // Assert running programs
-    Map<ProgramRunId, RunRecordMeta> runningHistorymap = store.getRuns(programId, ProgramRunStatus.RUNNING, nowSecs,
-                                                                    nowSecs + 1, 100);
+    Map<ProgramRunId, RunRecordMeta> runningHistorymap = store.getRuns(programId, ProgramRunStatus.RUNNING,
+                                                                       startTimeSecs, startTimeSecs + 1, 100);
     Assert.assertEquals(1, runningHistorymap.size());
     Assert.assertEquals(runningHistorymap, store.getRuns(programId, ProgramRunStatus.RUNNING, 0, Long.MAX_VALUE, 100));
 
@@ -367,57 +361,70 @@ public class DefaultStoreTest {
 
     // Backwards compatibility test with random UUIDs
     // record finished flow
-    int startToRunTime = 2; // The time it takes for the program to transition from STARTING to RUNNING
     RunId run5 = RunIds.fromString(UUID.randomUUID().toString());
-    store.setStartAndRun(programId, run5.getId(), nowSecs - 8, nowSecs - 8 + startToRunTime);
-    store.setStop(programId, run5.getId(), nowSecs - 4, ProgramController.State.COMPLETED.getRunStatus());
+    store.setStartAndRun(programId, run5.getId(), startTimeSecs - 8, startTimeSecs - 8 + startTimeDelaySecs);
+    store.setStop(programId, run5.getId(), startTimeSecs - 4, ProgramController.State.COMPLETED.getRunStatus());
 
     // record not finished flow
     RunId run6 = RunIds.fromString(UUID.randomUUID().toString());
-    store.setStartAndRun(programId, run6.getId(), nowSecs - 2, nowSecs - 2 + startToRunTime);
+    store.setStartAndRun(programId, run6.getId(), startTimeSecs - 2, startTimeSecs - 2 + startTimeDelaySecs);
 
     // Get run record for run5
-    RunRecordMeta expectedRecord5 = new RunRecordMeta(run5.getId(), nowSecs - 8, nowSecs - 8 + startToRunTime,
-                                                      nowSecs - 4, ProgramRunStatus.COMPLETED,
-                                                       noRuntimeArgsProps, null, null);
+    RunRecordMeta expectedRecord5 = new RunRecordMeta(run5.getId(), startTimeSecs - 8,
+                                                      startTimeSecs - 8 + startTimeDelaySecs, startTimeSecs - 4,
+                                                      ProgramRunStatus.COMPLETED, noRuntimeArgsProps, null, null);
     RunRecordMeta actualRecord5 = store.getRun(programId, run5.getId());
     Assert.assertEquals(expectedRecord5, actualRecord5);
 
     // Get run record for run6
-    RunRecordMeta expectedRecord6 = new RunRecordMeta(run6.getId(), nowSecs - 2, nowSecs - 2 + startToRunTime,
-                                                      null, ProgramRunStatus.RUNNING, noRuntimeArgsProps,
-                                                      null, null);
+    RunRecordMeta expectedRecord6 = new RunRecordMeta(run6.getId(), startTimeSecs - 2,
+                                                      startTimeSecs - 2 + startTimeDelaySecs, null,
+                                                      ProgramRunStatus.RUNNING, noRuntimeArgsProps, null, null);
     RunRecordMeta actualRecord6 = store.getRun(programId, run6.getId());
     Assert.assertEquals(expectedRecord6, actualRecord6);
 
     // Record flow that starts but encounters error before it runs
     RunId run7 = RunIds.fromString(UUID.randomUUID().toString());
     Map<String, String> emptyArgs = ImmutableMap.of();
-    store.setStart(programId, run7.getId(), nowSecs, null, emptyArgs, null);
-    store.setStop(programId, run7.getId(), nowSecs + 1, ProgramController.State.ERROR.getRunStatus());
-    RunRecordMeta expectedRunRecord7 = new RunRecordMeta(run7.getId(), nowSecs, null, nowSecs + 1,
+    store.setStart(programId, run7.getId(), startTimeSecs, null, emptyArgs, null);
+    store.setStop(programId, run7.getId(), startTimeSecs + 1, ProgramController.State.ERROR.getRunStatus());
+    RunRecordMeta expectedRunRecord7 = new RunRecordMeta(run7.getId(), startTimeSecs, null, startTimeSecs + 1,
                                                          ProgramRunStatus.FAILED, noRuntimeArgsProps, null, null);
     RunRecordMeta actualRecord7 = store.getRun(programId, run7.getId());
     Assert.assertEquals(expectedRunRecord7, actualRecord7);
 
     // Record flow that starts and suspends before it runs
     RunId run8 = RunIds.fromString(UUID.randomUUID().toString());
-    store.setStart(programId, run8.getId(), nowSecs, null, emptyArgs, null);
+    store.setStart(programId, run8.getId(), startTimeSecs, null, emptyArgs, null);
     store.setSuspend(programId, run8.getId());
-    RunRecordMeta expectedRunRecord8 = new RunRecordMeta(run8.getId(), nowSecs, null, null,
+    RunRecordMeta expectedRunRecord8 = new RunRecordMeta(run8.getId(), startTimeSecs, null, null,
                                                          ProgramRunStatus.SUSPENDED, noRuntimeArgsProps, null, null);
     RunRecordMeta actualRecord8 = store.getRun(programId, run8.getId());
     Assert.assertEquals(expectedRunRecord8, actualRecord8);
+
+    // Record flow that is killed while suspended
+    RunId run9 = RunIds.fromString(UUID.randomUUID().toString());
+    store.setStartAndRun(programId, run9.getId(), startTimeSecs, startTimeSecs + 1);
+    store.setSuspend(programId, run9.getId());
+    store.setStop(programId, run9.getId(), startTimeSecs + 5, ProgramRunStatus.KILLED);
+
+    RunRecordMeta expectedRunRecord9 = new RunRecordMeta(run9.getId(), startTimeSecs, startTimeSecs + 1,
+                                                         startTimeSecs + 5, ProgramRunStatus.KILLED,
+                                                         noRuntimeArgsProps, null, null);
+    RunRecordMeta actualRecord9 = store.getRun(programId, run9.getId());
+    Assert.assertEquals(expectedRunRecord9, actualRecord9);
 
     // Non-existent run record should give null
     Assert.assertNull(store.getRun(programId, UUID.randomUUID().toString()));
 
     // Searching for history in wrong time range should give us no results
     Assert.assertTrue(
-      store.getRuns(programId, ProgramRunStatus.COMPLETED, nowSecs - 5000, nowSecs - 2000, Integer.MAX_VALUE).isEmpty()
+      store.getRuns(programId, ProgramRunStatus.COMPLETED, startTimeSecs - 5000, startTimeSecs - 2000,
+                    Integer.MAX_VALUE).isEmpty()
     );
     Assert.assertTrue(
-      store.getRuns(programId, ProgramRunStatus.ALL, nowSecs - 5000, nowSecs - 2000, Integer.MAX_VALUE).isEmpty()
+      store.getRuns(programId, ProgramRunStatus.ALL, startTimeSecs - 5000, startTimeSecs - 2000,
+                    Integer.MAX_VALUE).isEmpty()
     );
   }
 

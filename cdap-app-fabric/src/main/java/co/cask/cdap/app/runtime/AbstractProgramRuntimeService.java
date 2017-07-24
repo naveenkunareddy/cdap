@@ -128,8 +128,7 @@ public abstract class AbstractProgramRuntimeService extends AbstractIdleService 
       String twillRunId = options.getArguments().getOption(ProgramOptionConstants.TWILL_RUN_ID);
       programStateWriter.start(programId.run(runId), options, twillRunId);
 
-      ProgramController controller = runner.run(executableProgram, optionsWithPlugins);
-      RuntimeInfo runtimeInfo = createRuntimeInfo(controller, programId);
+      RuntimeInfo runtimeInfo = createRuntimeInfo(runner.run(executableProgram, optionsWithPlugins), programId);
       monitorProgram(runtimeInfo, cleanUpTask);
       return runtimeInfo;
     } catch (Exception e) {

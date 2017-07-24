@@ -32,10 +32,10 @@ public class RunRecord {
   private final String pid;
 
   @SerializedName("starting")
+  @Nullable
   private final long startTs;
 
   @SerializedName("start")
-  @Nullable
   private final Long runTs;
 
   @Nullable

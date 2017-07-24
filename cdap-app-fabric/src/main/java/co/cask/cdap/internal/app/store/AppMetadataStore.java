@@ -83,8 +83,8 @@ public class AppMetadataStore extends MetadataStoreDataset {
   private static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() { }.getType();
   private static final String TYPE_APP_META = "appMeta";
   private static final String TYPE_STREAM = "stream";
-  private static final String TYPE_RUN_RECORD_STARTED = "runRecordStarting";
-  private static final String TYPE_RUN_RECORD_RUNNING = "runRecordStarted";
+  private static final String TYPE_RUN_RECORD_STARTING = "runRecordStarting";
+  private static final String TYPE_RUN_RECORD_STARTED = "runRecordStarted";
   private static final String TYPE_RUN_RECORD_SUSPENDED = "runRecordSuspended";
   private static final String TYPE_RUN_RECORD_COMPLETED = "runRecordCompleted";
   private static final String TYPE_WORKFLOW_NODE_STATE = "wns";
@@ -271,7 +271,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
     write(key, nodeStateDetail);
 
     // Get the run record of the Workflow which started this program
-    key = getProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, workflowRunId.getParent())
+    key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, workflowRunId.getParent())
             .add(workflowRunId.getRun()).build();
 
     RunRecordMeta record = get(key, RunRecordMeta.class);
@@ -284,18 +284,18 @@ public class AppMetadataStore extends MetadataStoreDataset {
   }
   public void recordProgramStart(ProgramId programId, String pid, long startTs, String twillRunId,
                                  Map<String, String> runtimeArgs, Map<String, String> systemArgs) {
-    MDSKey.Builder builder = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId);
+    MDSKey.Builder builder = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTING, programId);
     recordProgramStart(programId, pid, startTs, twillRunId, runtimeArgs, systemArgs, builder);
   }
 
   public void recordProgramRunning(ProgramId programId, String pid, long stateChangeTime, String twillRunId) {
-    MDSKey.Builder builder = getProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId);
+    MDSKey.Builder builder = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId);
     recordProgramRunning(programId, pid, stateChangeTime, twillRunId, builder);
   }
 
   @VisibleForTesting
   void recordProgramRunningOldFormat(ProgramId programId, String pid, long stateChangeTime, String twillRunId) {
-    MDSKey.Builder builder = getVersionLessProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId);
+    MDSKey.Builder builder = getVersionLessProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId);
     recordProgramRunning(programId, pid, stateChangeTime, twillRunId, builder);
   }
 
@@ -323,12 +323,12 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
   private void recordProgramRunning(ProgramId programId, String pid, long runTs, String twillRunId,
                                     MDSKey.Builder keyBuilder) {
-    MDSKey key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId).add(pid).build();
+    MDSKey key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTING, programId).add(pid).build();
     RunRecordMeta existing = get(key, RunRecordMeta.class);
 
     if (existing == null) {
       // No starting record, but program could have just resumed, so it should already have a running record
-      key = getProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId).add(pid).build();
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId).add(pid).build();
       existing = get(key, RunRecordMeta.class);
 
       if (existing == null) {
@@ -351,7 +351,7 @@ public class AppMetadataStore extends MetadataStoreDataset {
     // Delete the old run record
     deleteAll(key);
 
-    // Build the key for TYPE_RUN_RECORD_RUNNING
+    // Build the key for TYPE_RUN_RECORD_STARTED
     key = keyBuilder.add(pid).build();
     // The existing record's properties already contains the workflowRunId
     RunRecordMeta meta = new RunRecordMeta(pid, existing.getStartTs(), runTs, null, ProgramRunStatus.RUNNING,
@@ -368,13 +368,13 @@ public class AppMetadataStore extends MetadataStoreDataset {
   }
 
   private void recordProgramSuspendResume(ProgramId programId, String pid, String action) {
-    String fromType = TYPE_RUN_RECORD_RUNNING;
+    String fromType = TYPE_RUN_RECORD_STARTED;
     String toType = TYPE_RUN_RECORD_SUSPENDED;
     ProgramRunStatus toStatus = ProgramRunStatus.SUSPENDED;
 
     if (action.equals("resume")) {
       fromType = TYPE_RUN_RECORD_SUSPENDED;
-      toType = TYPE_RUN_RECORD_RUNNING;
+      toType = TYPE_RUN_RECORD_STARTED;
       toStatus = ProgramRunStatus.RUNNING;
     }
 
@@ -392,8 +392,8 @@ public class AppMetadataStore extends MetadataStoreDataset {
     }
 
     // We can also suspend a workflow that is in the starting state
-    if (record == null && fromType.equals(TYPE_RUN_RECORD_RUNNING)) {
-      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
+    if (record == null && fromType.equals(TYPE_RUN_RECORD_STARTED)) {
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTING, programId)
         .add(pid)
         .build();
       record = get(key, RunRecordMeta.class);
@@ -432,39 +432,43 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
   private void recordProgramStop(ProgramId programId, String pid, long stopTs, ProgramRunStatus runStatus,
                                  @Nullable BasicThrowable failureCause, MDSKey.Builder builder) {
-    MDSKey key = getProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId)
+    MDSKey key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
       .add(pid)
       .build();
     RunRecordMeta existing = getFirst(key, RunRecordMeta.class);
 
     // Check without the version string only for default version
     if (!upgradeComplete.get() && existing == null && (programId.getVersion().equals(ApplicationId.DEFAULT_VERSION))) {
-      key = getVersionLessProgramKeyBuilder(TYPE_RUN_RECORD_RUNNING, programId)
+      key = getVersionLessProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
         .add(pid)
         .build();
       existing = getFirst(key, RunRecordMeta.class);
     }
 
     if (existing == null) {
-      // No running record, so program could have started, but encountered an error before reaching the running state
-      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTED, programId)
+      // No running record, so program could have started and been killed / encountered an error before running
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_STARTING, programId)
         .add(pid)
         .build();
       existing = getFirst(key, RunRecordMeta.class);
-      if (existing == null) {
-        // No started or running record exists, so throw an error
-        String msg = String.format("No meta for run record for namespace %s app %s version %s program type %s " +
-                                   "program %s pid %s exists",
-                                   programId.getNamespace(), programId.getApplication(), programId.getVersion(),
-                                   programId.getType().name(), programId.getProgram(), pid);
-        LOG.error(msg);
-        throw new IllegalArgumentException(msg);
-      } else if (runStatus != ProgramRunStatus.FAILED && runStatus != ProgramRunStatus.KILLED) {
-        // Not possible to transition from starting to a non-failure state
-        // Can transition from STARTING to KILLED because stopping a program maps to KILLED
-        throw new UnsupportedOperationException(String.format("Cannot record program %s in status %s",
-                                                              programId, runStatus));
-      }
+    }
+
+    if (existing == null) {
+      // No running or started record, but a program can be suspended
+      key = getProgramKeyBuilder(TYPE_RUN_RECORD_SUSPENDED, programId)
+        .add(pid)
+        .build();
+      existing = getFirst(key, RunRecordMeta.class);
+    }
+
+    if (existing == null) {
+      // No started or running or suspended record exists, so throw an error
+      String msg = String.format("No meta for run record for namespace %s app %s version %s program type %s " +
+                                 "program %s pid %s exists",
+                                 programId.getNamespace(), programId.getApplication(), programId.getVersion(),
+                                 programId.getType().name(), programId.getProgram(), pid);
+      LOG.error(msg);
+      throw new IllegalArgumentException(msg);
     }
 
     deleteAll(key);
@@ -506,9 +510,9 @@ public class AppMetadataStore extends MetadataStoreDataset {
         runRecords.putAll(getHistoricalRuns(programId, status, startTime, endTime, limit - runRecords.size(), filter));
         return runRecords;
       case STARTING:
-        return getNonCompleteRuns(programId, TYPE_RUN_RECORD_STARTED, startTime, endTime, limit, filter);
+        return getNonCompleteRuns(programId, TYPE_RUN_RECORD_STARTING, startTime, endTime, limit, filter);
       case RUNNING:
-        return getNonCompleteRuns(programId, TYPE_RUN_RECORD_RUNNING, startTime, endTime, limit, filter);
+        return getNonCompleteRuns(programId, TYPE_RUN_RECORD_STARTED, startTime, endTime, limit, filter);
       case SUSPENDED:
         return getSuspendedRuns(programId, startTime, endTime, limit, filter);
       default:
@@ -521,14 +525,14 @@ public class AppMetadataStore extends MetadataStoreDataset {
   // JIRA https://issues.cask.co/browse/CDAP-2172
   public RunRecordMeta getRun(ProgramId program, final String runid) {
     // Query active run record first
-    RunRecordMeta running = getUnfinishedRun(program, TYPE_RUN_RECORD_RUNNING, runid);
+    RunRecordMeta running = getUnfinishedRun(program, TYPE_RUN_RECORD_STARTED, runid);
     // If program is running, this will be non-null
     if (running != null) {
       return running;
     }
 
     // Then query for started run record
-    RunRecordMeta starting = getUnfinishedRun(program, TYPE_RUN_RECORD_STARTED, runid);
+    RunRecordMeta starting = getUnfinishedRun(program, TYPE_RUN_RECORD_STARTING, runid);
     if (starting != null) {
       return starting;
     }
@@ -611,8 +615,8 @@ public class AppMetadataStore extends MetadataStoreDataset {
                                                          final long endTime, int limit,
                                                          @Nullable Predicate<RunRecordMeta> filter) {
     Map<ProgramRunId, RunRecordMeta> activeRunRecords =
-      getNonCompleteRuns(programId, TYPE_RUN_RECORD_STARTED, startTime, endTime, limit, filter);
-    activeRunRecords.putAll(getNonCompleteRuns(programId, TYPE_RUN_RECORD_RUNNING, startTime, endTime, limit, filter));
+      getNonCompleteRuns(programId, TYPE_RUN_RECORD_STARTING, startTime, endTime, limit, filter);
+    activeRunRecords.putAll(getNonCompleteRuns(programId, TYPE_RUN_RECORD_STARTED, startTime, endTime, limit, filter));
     return activeRunRecords;
   }
 
@@ -653,8 +657,8 @@ public class AppMetadataStore extends MetadataStoreDataset {
 
   private Map<ProgramRunId, RunRecordMeta> getActiveRuns(Set<ProgramRunId> programRunIds, int limit) {
     Map<ProgramRunId, RunRecordMeta> activeRunRecords =
-        getRunsForRunIds(programRunIds, TYPE_RUN_RECORD_STARTED, limit);
-    activeRunRecords.putAll(getRunsForRunIds(programRunIds, TYPE_RUN_RECORD_RUNNING, limit));
+        getRunsForRunIds(programRunIds, TYPE_RUN_RECORD_STARTING, limit);
+    activeRunRecords.putAll(getRunsForRunIds(programRunIds, TYPE_RUN_RECORD_STARTED, limit));
     return activeRunRecords;
   }
 
@@ -804,21 +808,21 @@ public class AppMetadataStore extends MetadataStoreDataset {
   public void deleteProgramHistory(String namespaceId, String appId, String versionId) {
     if (!upgradeComplete.get() && versionId.equals(ApplicationId.DEFAULT_VERSION)) {
       Predicate<MDSKey> keyPredicate = new AppVersionPredicate(ApplicationId.DEFAULT_VERSION);
+      deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_STARTING, namespaceId, appId).build(), keyPredicate);
       deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_STARTED, namespaceId, appId).build(), keyPredicate);
-      deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_RUNNING, namespaceId, appId).build(), keyPredicate);
       deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_COMPLETED, namespaceId, appId).build(), keyPredicate);
       deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_SUSPENDED, namespaceId, appId).build(), keyPredicate);
     } else {
+      deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_STARTING, namespaceId, appId, versionId).build());
       deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_STARTED, namespaceId, appId, versionId).build());
-      deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_RUNNING, namespaceId, appId, versionId).build());
       deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_COMPLETED, namespaceId, appId, versionId).build());
       deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_SUSPENDED, namespaceId, appId, versionId).build());
     }
   }
 
   public void deleteProgramHistory(String namespaceId) {
+    deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_STARTING, namespaceId).build());
     deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_STARTED, namespaceId).build());
-    deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_RUNNING, namespaceId).build());
     deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_COMPLETED, namespaceId).build());
     deleteAll(new MDSKey.Builder().add(TYPE_RUN_RECORD_SUSPENDED, namespaceId).build());
   }
@@ -893,9 +897,9 @@ public class AppMetadataStore extends MetadataStoreDataset {
                                                         scanTimeoutMills));
     Iterables.addAll(runIds, getRunningInRangeForStatus(TYPE_RUN_RECORD_SUSPENDED, startTimeInSecs, endTimeInSecs,
                                                         scanTimeoutMills));
-    Iterables.addAll(runIds, getRunningInRangeForStatus(TYPE_RUN_RECORD_RUNNING, startTimeInSecs, endTimeInSecs,
-                                                        scanTimeoutMills));
     Iterables.addAll(runIds, getRunningInRangeForStatus(TYPE_RUN_RECORD_STARTED, startTimeInSecs, endTimeInSecs,
+                                                        scanTimeoutMills));
+    Iterables.addAll(runIds, getRunningInRangeForStatus(TYPE_RUN_RECORD_STARTING, startTimeInSecs, endTimeInSecs,
                                                         scanTimeoutMills));
     return runIds;
   }
