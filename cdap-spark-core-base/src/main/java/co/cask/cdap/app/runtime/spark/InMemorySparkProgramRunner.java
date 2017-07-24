@@ -17,11 +17,13 @@
 package co.cask.cdap.app.runtime.spark;
 
 import co.cask.cdap.app.program.Program;
+import co.cask.cdap.app.runtime.ProgramClassLoaderProvider;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.conf.CConfiguration;
+import co.cask.cdap.common.lang.FilterClassLoader;
 import co.cask.cdap.internal.app.AbstractInMemoryProgramRunner;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -29,7 +31,7 @@ import com.google.inject.Provider;
 /**
  *
  */
-public class InMemorySparkProgramRunner extends AbstractInMemoryProgramRunner {
+public class InMemorySparkProgramRunner extends AbstractInMemoryProgramRunner implements ProgramClassLoaderProvider {
   private final Provider<SparkProgramRunner> sparkProgramRunnerProvider;
 
   @Inject
@@ -48,6 +50,11 @@ public class InMemorySparkProgramRunner extends AbstractInMemoryProgramRunner {
   @Override
   protected ProgramRunner createProgramRunner() {
     return sparkProgramRunnerProvider.get();
+  }
+
+  @Override
+  public ClassLoader createProgramClassLoaderParent() {
+    return new FilterClassLoader(getClass().getClassLoader(), SparkRuntimeUtils.SPARK_PROGRAM_CLASS_LOADER_FILTER);
   }
 }
 

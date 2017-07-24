@@ -86,8 +86,7 @@ import javax.annotation.Nullable;
 /**
  * The {@link ProgramRunner} that executes Spark program.
  */
-final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
-                               implements ProgramClassLoaderProvider, Closeable {
+final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkProgramRunner.class);
 
@@ -208,11 +207,6 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin
       closeAll(closeables);
       throw Throwables.propagate(t);
     }
-  }
-
-  @Override
-  public ClassLoader createProgramClassLoaderParent() {
-    return new FilterClassLoader(getClass().getClassLoader(), SparkRuntimeUtils.SPARK_PROGRAM_CLASS_LOADER_FILTER);
   }
 
   /**

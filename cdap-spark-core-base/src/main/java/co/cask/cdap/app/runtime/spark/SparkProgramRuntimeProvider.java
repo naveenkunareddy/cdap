@@ -99,7 +99,7 @@ public abstract class SparkProgramRuntimeProvider implements ProgramRuntimeProvi
             // The current CDAP call run right after it get a ProgramRunner and never reuse a ProgramRunner.
             // TODO: CDAP-5506 to refactor the program runtime architecture to remove the need of this assumption
             return createSparkProgramRunner(createRunnerInjector(injector, classLoader),
-                                            SparkProgramRunner.class.getName(), classLoader);
+                                            InMemorySparkProgramRunner.class.getName(), classLoader);
           } catch (Throwable t) {
             // If there is any exception, close the classloader
             Closeables.closeQuietly(classLoader);
