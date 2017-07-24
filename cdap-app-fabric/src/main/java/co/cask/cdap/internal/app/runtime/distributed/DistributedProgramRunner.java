@@ -24,6 +24,8 @@ import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
+import co.cask.cdap.app.twill.HadoopClassExcluder;
+import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
 import co.cask.cdap.common.app.MainClassLoader;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.CConfigurationUtil;
@@ -34,8 +36,6 @@ import co.cask.cdap.common.lang.jar.BundleJarUtil;
 import co.cask.cdap.common.logging.LoggerLogHandler;
 import co.cask.cdap.common.logging.LoggingContext;
 import co.cask.cdap.common.logging.LoggingContextAccessor;
-import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
-import co.cask.cdap.app.twill.HadoopClassExcluder;
 import co.cask.cdap.common.utils.DirUtils;
 import co.cask.cdap.data2.util.hbase.HBaseDDLExecutorFactory;
 import co.cask.cdap.data2.util.hbase.HBaseTableUtilFactory;
@@ -141,9 +141,9 @@ public abstract class DistributedProgramRunner implements ProgramRunner {
     this.programStateWriter = programStateWriter;
   }
 
-  protected EventHandler createEventHandler(CConfiguration cConf) {
+  protected EventHandler createEventHandler(CConfiguration cConf, ProgramOptions options) {
     return new TwillAppLifecycleEventHandler(cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE),
-                                             programStateWriter);
+                                             programStateWriter, options);
   }
 
   /**
@@ -251,7 +251,7 @@ public abstract class DistributedProgramRunner implements ProgramRunner {
                                                                                  launchConfig.getRunnables(),
                                                                                  launchConfig.getLaunchOrder(),
                                                                                  localizeResources,
-                                                                                 createEventHandler(cConf));
+                                                                                 createEventHandler(cConf, options));
 
           TwillPreparer twillPreparer = twillRunner.prepare(twillApplication);
 

@@ -22,7 +22,9 @@ import co.cask.cdap.app.guice.AuthorizationModule;
 import co.cask.cdap.app.guice.ProgramRunnerRuntimeModule;
 import co.cask.cdap.app.guice.ServiceStoreModules;
 import co.cask.cdap.app.guice.TwillModule;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.store.ServiceStore;
+import co.cask.cdap.app.twill.HadoopClassExcluder;
 import co.cask.cdap.common.MasterUtils;
 import co.cask.cdap.common.app.MainClassLoader;
 import co.cask.cdap.common.conf.CConfiguration;
@@ -40,7 +42,6 @@ import co.cask.cdap.common.runtime.DaemonMain;
 import co.cask.cdap.common.service.RetryOnStartFailureService;
 import co.cask.cdap.common.service.RetryStrategies;
 import co.cask.cdap.common.service.Services;
-import co.cask.cdap.app.twill.HadoopClassExcluder;
 import co.cask.cdap.common.utils.DirUtils;
 import co.cask.cdap.common.zookeeper.election.LeaderElectionInfoService;
 import co.cask.cdap.data.runtime.DataFabricModules;
@@ -174,6 +175,7 @@ public class MasterServiceMain extends DaemonMain {
   private final LeaderElectionInfoService electionInfoService;
   private final LogAppenderInitializer logAppenderInitializer;
   private final MasterLeaderElectionHandler electionHandler;
+  private final ProgramStateWriter programStateWriter;
 
   private volatile boolean stopped;
 
@@ -213,13 +215,15 @@ public class MasterServiceMain extends DaemonMain {
     Injector injector = createProcessInjector(cConf, hConf);
     this.cConf = injector.getInstance(CConfiguration.class);
     this.hConf = injector.getInstance(Configuration.class);
+    this.programStateWriter = injector.getInstance(ProgramStateWriter.class);
     this.logAppenderInitializer = injector.getInstance(LogAppenderInitializer.class);
     this.zkClient = injector.getInstance(ZKClientService.class);
     this.shutdownLock = new ReentrantDistributedLock(zkClient, "/lock/" + Constants.Service.MASTER_SERVICES);
 
     String electionPath = "/election/" + Constants.Service.MASTER_SERVICES;
     this.electionInfoService = new LeaderElectionInfoService(zkClient, electionPath);
-    this.electionHandler = new MasterLeaderElectionHandler(cConf, hConf, zkClient, electionInfoService);
+    this.electionHandler = new MasterLeaderElectionHandler(cConf, hConf, zkClient,
+                                                           electionInfoService, programStateWriter);
     this.leaderElection = new LeaderElection(zkClient, electionPath, electionHandler);
 
     // leader election will normally stay running. Will only stop if there was some issue starting up.
@@ -588,6 +592,7 @@ public class MasterServiceMain extends DaemonMain {
     private final Configuration hConf;
     private final ZKClientService zkClient;
     private final LeaderElectionInfoService electionInfoService;
+    private final ProgramStateWriter programStateWriter;
     private final AtomicReference<TwillController> controller;
     private final List<Service> services;
 
@@ -600,11 +605,13 @@ public class MasterServiceMain extends DaemonMain {
     private ExploreClient exploreClient;
 
     private MasterLeaderElectionHandler(CConfiguration cConf, Configuration hConf, ZKClientService zkClient,
-                                        LeaderElectionInfoService electionInfoService) {
+                                        LeaderElectionInfoService electionInfoService,
+                                        ProgramStateWriter programStateWriter) {
       this.cConf = cConf;
       this.hConf = hConf;
       this.zkClient = zkClient;
       this.electionInfoService = electionInfoService;
+      this.programStateWriter = programStateWriter;
       this.controller = new AtomicReference<>();
       this.services = new ArrayList<>();
     }
@@ -881,7 +888,8 @@ public class MasterServiceMain extends DaemonMain {
         try {
           Path logbackFile = saveLogbackConf(runDir.resolve("logback.xml"));
           MasterTwillApplication masterTwillApp = new MasterTwillApplication(cConf,
-                                                                             getServiceInstances(serviceStore, cConf));
+                                                                             getServiceInstances(serviceStore, cConf),
+                                                                             programStateWriter);
           List<String> extraClassPath = masterTwillApp.prepareLocalizeResource(runDir, hConf);
           TwillPreparer preparer = twillRunner.prepare(masterTwillApp);
 

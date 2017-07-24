@@ -27,7 +27,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 
 /**
- * Created by sameetsapra on 7/21/17.
+ * For running {@link WebappProgramRunner}. Only used in-memory / standalone.
  */
 public class InMemoryWebappProgramRunner extends AbstractInMemoryProgramRunner {
   private final Provider<WebappProgramRunner> webappProgramRunnerProvider;

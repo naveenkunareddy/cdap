@@ -27,7 +27,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 
 /**
- * Created by sameetsapra on 7/21/17.
+ * For running {@link FlowProgramRunner}. Only used in-memory / standalone.
  */
 public class InMemoryFlowProgramRunner extends AbstractInMemoryProgramRunner {
   private final Provider<FlowProgramRunner> flowProgramRunnerProvider;

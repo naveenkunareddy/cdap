@@ -27,7 +27,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 
 /**
- * Created by sameetsapra on 7/21/17.
+ * For running {@link MapReduceProgramRunner}. Only used in-memory / standalone.
  */
 public class InMemoryMapReduceProgramRunner extends AbstractInMemoryProgramRunner {
   private final Provider<MapReduceProgramRunner> mapReduceProgramRunnerProvider;

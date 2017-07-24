@@ -24,9 +24,9 @@ import co.cask.cdap.app.program.ProgramDescriptor;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
+import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.SystemArguments;
 import co.cask.cdap.proto.ProgramType;
@@ -95,8 +95,8 @@ public class DistributedWorkerProgramRunner extends DistributedProgramRunner {
   }
 
   @Override
-  protected EventHandler createEventHandler(CConfiguration cConf) {
+  protected EventHandler createEventHandler(CConfiguration cConf, ProgramOptions options) {
     return new TwillAppLifecycleEventHandler(
-      cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE), true, programStateWriter);
+      cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE), true, programStateWriter, options);
   }
 }

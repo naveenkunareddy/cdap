@@ -16,10 +16,10 @@
 
 package co.cask.cdap.internal.app.runtime.distributed;
 
+import co.cask.cdap.app.twill.AbstractDistributedMasterServiceManager;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.discovery.RandomEndpointStrategy;
-import co.cask.cdap.app.twill.AbstractDistributedMasterServiceManager;
 import com.google.inject.Inject;
 import org.apache.tephra.TransactionSystemClient;
 import org.apache.twill.api.TwillRunnerService;

@@ -223,11 +223,10 @@ public class MapReduceProgramRunner extends AbstractProgramRunnerWithPlugin {
   }
 
   /**
-   * Creates a service listener to reactor on state changes on {@link MapReduceRuntimeService}.
+   * Creates a service listener to cleanup closeables on {@link MapReduceRuntimeService}.
    */
   private Service.Listener createRuntimeServiceListener(final Iterable<Closeable> closeables) {
     return new ServiceListenerAdapter() {
-
       @Override
       public void terminated(Service.State from) {
         closeAllQuietly(closeables);

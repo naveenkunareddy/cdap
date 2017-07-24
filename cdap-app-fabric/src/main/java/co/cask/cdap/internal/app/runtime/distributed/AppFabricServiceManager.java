@@ -18,8 +18,8 @@ package co.cask.cdap.internal.app.runtime.distributed;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.app.twill.MasterServiceManager;
+import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.zookeeper.election.LeaderElectionInfoService;
 import co.cask.cdap.proto.Containers;
 import co.cask.cdap.proto.SystemServiceLiveInfo;

@@ -37,7 +37,9 @@ import co.cask.cdap.api.worker.AbstractWorker;
 import co.cask.cdap.api.workflow.AbstractWorkflow;
 import co.cask.cdap.app.DefaultAppConfigurer;
 import co.cask.cdap.app.program.Program;
+import co.cask.cdap.app.runtime.NoOpProgramStateWriter;
 import co.cask.cdap.app.runtime.ProgramOptions;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.runtime.spark.SparkCompat;
 import co.cask.cdap.app.runtime.spark.distributed.DistributedSparkProgramRunner;
 import co.cask.cdap.common.conf.CConfiguration;
@@ -90,13 +92,15 @@ public class DistributedProgramRunnerTxTimeoutTest {
     appSpec = configurer.createSpecification("app", "1.0");
     // System.out.println(new GsonBuilder().setPrettyPrinting().create().toJson(appSpec));
 
+    ProgramStateWriter noOpWriter = new NoOpProgramStateWriter();
     cConf.setInt(TxConstants.Manager.CFG_TX_MAX_TIMEOUT, 60);
-    flowRunner = new DistributedFlowProgramRunner(null, yConf, cConf, null, null, null, null, null);
-    serviceRunner = new DistributedServiceProgramRunner(null, yConf, cConf, null, null);
-    workerRunner = new DistributedWorkerProgramRunner(null, yConf, cConf, null, null);
-    mapreduceRunner = new DistributedMapReduceProgramRunner(null, yConf, cConf, null, null);
-    sparkRunner = new DistributedSparkProgramRunner(SparkCompat.SPARK1_2_10, null, yConf, cConf, null, null, null);
-    workflowRunner = new DistributedWorkflowProgramRunner(null, yConf, cConf, null, null, null);
+    flowRunner = new DistributedFlowProgramRunner(null, yConf, cConf, null, null, null, null, null, noOpWriter);
+    serviceRunner = new DistributedServiceProgramRunner(null, yConf, cConf, null, null, noOpWriter);
+    workerRunner = new DistributedWorkerProgramRunner(null, yConf, cConf, null, null, noOpWriter);
+    mapreduceRunner = new DistributedMapReduceProgramRunner(null, yConf, cConf, null, null, noOpWriter);
+    sparkRunner = new DistributedSparkProgramRunner(SparkCompat.SPARK1_2_10, null, yConf, cConf, null, null, null,
+                                                    noOpWriter);
+    workflowRunner = new DistributedWorkflowProgramRunner(null, yConf, cConf, null, null, null, noOpWriter);
   }
 
   @Test

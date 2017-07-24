@@ -248,7 +248,7 @@ final class SparkProgramRunner extends AbstractProgramRunnerWithPlugin implement
   }
 
   /**
-   * Creates a service listener to reactor on state changes on {@link SparkRuntimeService}.
+   * Creates a service listener to cleanup closeables on {@link SparkRuntimeService}.
    */
   private Service.Listener createRuntimeServiceListener(final Iterable<Closeable> closeables) {
     return new ServiceListenerAdapter() {

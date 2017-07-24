@@ -16,13 +16,15 @@
 
 package co.cask.cdap.data.runtime.main;
 
+import co.cask.cdap.app.runtime.ProgramStateWriter;
+import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.lang.jar.BundleJarUtil;
-import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
 import co.cask.cdap.common.utils.DirUtils;
 import co.cask.cdap.explore.service.ExploreServiceUtils;
 import co.cask.cdap.hive.ExploreUtils;
+import co.cask.cdap.internal.app.runtime.SimpleProgramOptions;
 import co.cask.cdap.internal.app.runtime.batch.distributed.MapReduceContainerHelper;
 import co.cask.cdap.internal.app.runtime.distributed.LocalizeResource;
 import co.cask.cdap.logging.LoggingUtil;
@@ -85,8 +87,10 @@ public class MasterTwillApplication implements TwillApplication {
 
   private final Map<String, Integer> instanceCountMap;
   private final Map<String, Map<String, LocalizeResource>> runnableLocalizeResources;
+  private final ProgramStateWriter programStateWriter;
 
-  MasterTwillApplication(CConfiguration cConf, Map<String, Integer> instanceCountMap) {
+  MasterTwillApplication(CConfiguration cConf, Map<String, Integer> instanceCountMap,
+                         ProgramStateWriter programStateWriter) {
     this.cConf = cConf;
     this.instanceCountMap = instanceCountMap;
 
@@ -95,6 +99,7 @@ public class MasterTwillApplication implements TwillApplication {
       runnableLocalizeResources.put(service, new HashMap<String, LocalizeResource>());
     }
     this.runnableLocalizeResources = runnableLocalizeResources;
+    this.programStateWriter = programStateWriter;
   }
 
   /**
@@ -168,7 +173,7 @@ public class MasterTwillApplication implements TwillApplication {
           .add(TwillSpecification.PlacementPolicy.Type.DISTRIBUTED, Constants.Service.STREAMS)
         .withOrder()
           .begin(Constants.Service.MESSAGING_SERVICE, Constants.Service.TRANSACTION, Constants.Service.DATASET_EXECUTOR)
-        .withEventHandler(new TwillAppLifecycleEventHandler(noContainerTimeout))
+        .withEventHandler(new TwillAppLifecycleEventHandler(noContainerTimeout, programStateWriter, null))
         .build();
   }
 

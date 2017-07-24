@@ -15,7 +15,9 @@
  */
 package co.cask.cdap.app.twill;
 
+import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramStateWriter;
+import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
 import co.cask.cdap.internal.app.runtime.distributed.TwillAppNames;
 import com.google.common.collect.ImmutableMap;
 import org.apache.twill.api.EventHandler;
@@ -38,17 +40,19 @@ public class TwillAppLifecycleEventHandler extends EventHandler {
   private long abortTime;
   private boolean abortIfNotFull;
   private final ProgramStateWriter programStateWriter;
+  private final ProgramOptions options;
 
   /**
    * Constructs an instance of TwillAppLifecycleEventHandler that abort the application if some runnable has no
-   * containers, same as calling {@link #TwillAppLifecycleEventHandler(long, boolean, ProgramStateWriter)} with second
+   * containers, same as calling
+   * {@link #TwillAppLifecycleEventHandler(long, boolean, ProgramStateWriter, ProgramOptions)} with second
    * parameter as {@code false}.
    *
    * @param abortTime Time in milliseconds to pass before aborting the application if no container is given to
    *                  a runnable.
    */
-  public TwillAppLifecycleEventHandler(long abortTime, ProgramStateWriter programStateWriter) {
-    this(abortTime, false, programStateWriter);
+  public TwillAppLifecycleEventHandler(long abortTime, ProgramStateWriter programStateWriter, ProgramOptions options) {
+    this(abortTime, false, programStateWriter, options);
   }
 
   /**
@@ -57,12 +61,15 @@ public class TwillAppLifecycleEventHandler extends EventHandler {
    * @param abortTime Time in milliseconds to pass before aborting the application if no container is given to
    *                  a runnable.
    * @param abortIfNotFull If {@code true}, it will abort the application if any runnable doesn't meet the expected
+   *                       number of instances.
    * @param programStateWriter
    */
-  public TwillAppLifecycleEventHandler(long abortTime, boolean abortIfNotFull, ProgramStateWriter programStateWriter) {
+  public TwillAppLifecycleEventHandler(long abortTime, boolean abortIfNotFull, ProgramStateWriter programStateWriter,
+                                       ProgramOptions options) {
     this.abortTime = abortTime;
     this.abortIfNotFull = abortIfNotFull;
     this.programStateWriter = programStateWriter;
+    this.options = options;
   }
 
   @Override
@@ -98,19 +105,31 @@ public class TwillAppLifecycleEventHandler extends EventHandler {
     return TimeoutAction.recheck(abortTime / 2, TimeUnit.MILLISECONDS);
   }
 
-  public void started(String twillAppName, RunId runId) {
-    programStateWriter.running(TwillAppNames.fromTwillAppName(twillAppName).run(runId), runId.getId());
+  public void started(String twillAppName, RunId twillRunId) {
+    if (options == null) {
+      return;
+    }
+    String runId = options.getArguments().getOption(ProgramOptionConstants.RUN_ID);
+    programStateWriter.running(TwillAppNames.fromTwillAppName(twillAppName).run(runId), twillRunId.getId());
   }
 
-  public void containerLaunched(String twillAppName, RunId runId, int instanceId) {
+  public void containerLaunched(String twillAppName, RunId twillRunId, int instanceId) {
     // no-op
   }
 
-  public void completed(String twillAppName, RunId runId) {
+  public void completed(String twillAppName, RunId twillRunId) {
+    if (options == null) {
+      return;
+    }
+    String runId = options.getArguments().getOption(ProgramOptionConstants.RUN_ID);
     programStateWriter.completed(TwillAppNames.fromTwillAppName(twillAppName).run(runId));
   }
 
-  public void killed(String twillAppName, RunId runId) {
+  public void killed(String twillAppName, RunId twillRunId) {
+    if (options == null) {
+      return;
+    }
+    String runId = options.getArguments().getOption(ProgramOptionConstants.RUN_ID);
     programStateWriter.killed(TwillAppNames.fromTwillAppName(twillAppName).run(runId));
   }
 }

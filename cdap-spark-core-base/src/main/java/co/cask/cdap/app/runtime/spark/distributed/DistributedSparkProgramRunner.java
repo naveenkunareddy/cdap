@@ -27,15 +27,16 @@ import co.cask.cdap.app.runtime.ProgramClassLoaderProvider;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.app.runtime.spark.SparkCompat;
 import co.cask.cdap.app.runtime.spark.SparkPackageUtils;
 import co.cask.cdap.app.runtime.spark.SparkProgramRuntimeProvider;
 import co.cask.cdap.app.runtime.spark.SparkRuntimeContextConfig;
 import co.cask.cdap.app.runtime.spark.SparkRuntimeUtils;
+import co.cask.cdap.app.twill.HadoopClassExcluder;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.lang.FilterClassLoader;
-import co.cask.cdap.common.twill.HadoopClassExcluder;
 import co.cask.cdap.internal.app.runtime.SystemArguments;
 import co.cask.cdap.internal.app.runtime.batch.distributed.MapReduceContainerHelper;
 import co.cask.cdap.internal.app.runtime.distributed.DistributedProgramRunner;
@@ -87,8 +88,9 @@ public final class DistributedSparkProgramRunner extends DistributedProgramRunne
   public DistributedSparkProgramRunner(SparkCompat sparkComat, TwillRunner twillRunner,
                                        YarnConfiguration hConf, CConfiguration cConf,
                                        TokenSecureStoreRenewer tokenSecureStoreRenewer,
-                                       Impersonator impersonator, LocationFactory locationFactory) {
-    super(twillRunner, hConf, cConf, tokenSecureStoreRenewer, impersonator);
+                                       Impersonator impersonator, LocationFactory locationFactory,
+                                       ProgramStateWriter programStateWriter) {
+    super(twillRunner, hConf, cConf, tokenSecureStoreRenewer, impersonator, programStateWriter);
     this.sparkCompat = sparkComat;
     this.locationFactory = locationFactory;
   }

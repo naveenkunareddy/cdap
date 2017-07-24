@@ -16,8 +16,8 @@
 
 package co.cask.cdap.logging.run;
 
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.app.twill.AbstractInMemoryMasterServiceManager;
+import co.cask.cdap.common.conf.Constants;
 
 /**
  *  In memory dataset executor service manager.
