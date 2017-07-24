@@ -18,8 +18,8 @@ package co.cask.cdap.messaging.distributed;
 
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.twill.AbstractDistributedMasterServiceManager;
-import co.cask.cdap.common.twill.MasterServiceManager;
+import co.cask.cdap.app.twill.AbstractDistributedMasterServiceManager;
+import co.cask.cdap.app.twill.MasterServiceManager;
 import com.google.inject.Inject;
 import org.apache.twill.api.TwillRunnerService;
 import org.apache.twill.discovery.DiscoveryServiceClient;

@@ -40,7 +40,7 @@ import co.cask.cdap.common.runtime.DaemonMain;
 import co.cask.cdap.common.service.RetryOnStartFailureService;
 import co.cask.cdap.common.service.RetryStrategies;
 import co.cask.cdap.common.service.Services;
-import co.cask.cdap.common.twill.HadoopClassExcluder;
+import co.cask.cdap.app.twill.HadoopClassExcluder;
 import co.cask.cdap.common.utils.DirUtils;
 import co.cask.cdap.common.zookeeper.election.LeaderElectionInfoService;
 import co.cask.cdap.data.runtime.DataFabricModules;

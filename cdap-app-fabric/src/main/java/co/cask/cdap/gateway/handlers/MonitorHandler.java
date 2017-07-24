@@ -24,7 +24,7 @@ import co.cask.cdap.common.ServiceUnavailableException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.security.AuditDetail;
 import co.cask.cdap.common.security.AuditPolicy;
-import co.cask.cdap.common.twill.MasterServiceManager;
+import co.cask.cdap.app.twill.MasterServiceManager;
 import co.cask.cdap.gateway.handlers.util.AbstractAppFabricHttpHandler;
 import co.cask.cdap.proto.SystemServiceMeta;
 import co.cask.http.HttpResponder;

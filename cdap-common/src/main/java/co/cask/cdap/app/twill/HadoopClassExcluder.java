@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.common.twill;
+package co.cask.cdap.app.twill;
 
 import org.apache.twill.api.ClassAcceptor;
 

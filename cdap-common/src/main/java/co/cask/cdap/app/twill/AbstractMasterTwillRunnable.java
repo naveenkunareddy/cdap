@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.common.twill;
+package co.cask.cdap.app.twill;
 
 import co.cask.cdap.api.metrics.MetricsCollectionService;
 import co.cask.cdap.common.conf.CConfiguration;

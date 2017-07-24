@@ -17,7 +17,7 @@
 package co.cask.cdap.internal.app.runtime.batch;
 
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.twill.AbstractInMemoryMasterServiceManager;
+import co.cask.cdap.app.twill.AbstractInMemoryMasterServiceManager;
 import com.google.inject.Inject;
 import org.apache.tephra.TransactionSystemClient;
 

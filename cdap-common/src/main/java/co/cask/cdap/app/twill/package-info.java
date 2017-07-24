@@ -17,5 +17,5 @@
 /**
  * Wrapper classes to run twill applications.
  */
-package co.cask.cdap.common.twill;
+package co.cask.cdap.app.twill;
 

@@ -34,6 +34,7 @@ import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
 import co.cask.cdap.app.runtime.ProgramRunnerFactory;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.internal.app.runtime.SystemArguments;
 import co.cask.cdap.proto.ProgramType;
@@ -72,8 +73,8 @@ public final class DistributedWorkflowProgramRunner extends DistributedProgramRu
   DistributedWorkflowProgramRunner(TwillRunner twillRunner, YarnConfiguration hConf, CConfiguration cConf,
                                    TokenSecureStoreRenewer tokenSecureStoreRenewer,
                                    ProgramRunnerFactory programRunnerFactory,
-                                   Impersonator impersonator) {
-    super(twillRunner, hConf, cConf, tokenSecureStoreRenewer, impersonator);
+                                   Impersonator impersonator, ProgramStateWriter programStateWriter) {
+    super(twillRunner, hConf, cConf, tokenSecureStoreRenewer, impersonator, programStateWriter);
     this.programRunnerFactory = programRunnerFactory;
   }
 

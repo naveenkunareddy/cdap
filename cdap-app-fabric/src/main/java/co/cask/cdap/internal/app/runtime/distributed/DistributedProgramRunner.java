@@ -23,6 +23,7 @@ import co.cask.cdap.app.runtime.Arguments;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.app.MainClassLoader;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.CConfigurationUtil;
@@ -33,8 +34,8 @@ import co.cask.cdap.common.lang.jar.BundleJarUtil;
 import co.cask.cdap.common.logging.LoggerLogHandler;
 import co.cask.cdap.common.logging.LoggingContext;
 import co.cask.cdap.common.logging.LoggingContextAccessor;
-import co.cask.cdap.common.twill.AbortOnTimeoutEventHandler;
-import co.cask.cdap.common.twill.HadoopClassExcluder;
+import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
+import co.cask.cdap.app.twill.HadoopClassExcluder;
 import co.cask.cdap.common.utils.DirUtils;
 import co.cask.cdap.data2.util.hbase.HBaseDDLExecutorFactory;
 import co.cask.cdap.data2.util.hbase.HBaseTableUtilFactory;
@@ -127,19 +128,22 @@ public abstract class DistributedProgramRunner implements ProgramRunner {
   protected final TokenSecureStoreRenewer secureStoreRenewer;
   private final TwillRunner twillRunner;
   private final Impersonator impersonator;
+  private final ProgramStateWriter programStateWriter;
 
   protected DistributedProgramRunner(TwillRunner twillRunner, YarnConfiguration hConf, CConfiguration cConf,
                                      TokenSecureStoreRenewer tokenSecureStoreRenewer,
-                                     Impersonator impersonator) {
+                                     Impersonator impersonator, ProgramStateWriter programStateWriter) {
     this.twillRunner = twillRunner;
     this.hConf = hConf;
     this.cConf = cConf;
     this.secureStoreRenewer = tokenSecureStoreRenewer;
     this.impersonator = impersonator;
+    this.programStateWriter = programStateWriter;
   }
 
   protected EventHandler createEventHandler(CConfiguration cConf) {
-    return new AbortOnTimeoutEventHandler(cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE));
+    return new TwillAppLifecycleEventHandler(cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE),
+                                             programStateWriter);
   }
 
   /**

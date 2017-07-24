@@ -22,6 +22,7 @@ import co.cask.cdap.app.program.Program;
 import co.cask.cdap.app.program.ProgramDescriptor;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.internal.app.runtime.SystemArguments;
 import co.cask.cdap.internal.app.runtime.webapp.WebappProgramRunner;
@@ -47,8 +48,8 @@ public final class DistributedWebappProgramRunner extends DistributedProgramRunn
   @Inject
   DistributedWebappProgramRunner(TwillRunner twillRunner, YarnConfiguration hConf, CConfiguration cConf,
                                  TokenSecureStoreRenewer tokenSecureStoreRenewer,
-                                 Impersonator impersonator) {
-    super(twillRunner, hConf, cConf, tokenSecureStoreRenewer, impersonator);
+                                 Impersonator impersonator, ProgramStateWriter programStateWriter) {
+    super(twillRunner, hConf, cConf, tokenSecureStoreRenewer, impersonator, programStateWriter);
   }
 
   @Override

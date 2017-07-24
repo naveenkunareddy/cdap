@@ -30,10 +30,11 @@ import co.cask.cdap.app.queue.QueueSpecificationGenerator;
 import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.app.runtime.ProgramOptions;
 import co.cask.cdap.app.runtime.ProgramRunner;
+import co.cask.cdap.app.runtime.ProgramStateWriter;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.queue.QueueName;
-import co.cask.cdap.common.twill.AbortOnTimeoutEventHandler;
+import co.cask.cdap.app.twill.TwillAppLifecycleEventHandler;
 import co.cask.cdap.data2.transaction.queue.QueueAdmin;
 import co.cask.cdap.data2.transaction.stream.StreamAdmin;
 import co.cask.cdap.internal.app.queue.SimpleQueueSpecificationGenerator;
@@ -75,18 +76,20 @@ public final class DistributedFlowProgramRunner extends DistributedProgramRunner
   private final StreamAdmin streamAdmin;
   private final TransactionExecutorFactory txExecutorFactory;
   private final Impersonator impersonator;
+  private final ProgramStateWriter programStateWriter;
 
   @Inject
   DistributedFlowProgramRunner(TwillRunner twillRunner, YarnConfiguration hConf,
                                CConfiguration cConfig, QueueAdmin queueAdmin, StreamAdmin streamAdmin,
                                TransactionExecutorFactory txExecutorFactory,
                                TokenSecureStoreRenewer tokenSecureStoreRenewer,
-                               Impersonator impersonator) {
-    super(twillRunner,  hConf, cConfig, tokenSecureStoreRenewer, impersonator);
+                               Impersonator impersonator, ProgramStateWriter programStateWriter) {
+    super(twillRunner,  hConf, cConfig, tokenSecureStoreRenewer, impersonator, programStateWriter);
     this.queueAdmin = queueAdmin;
     this.streamAdmin = streamAdmin;
     this.txExecutorFactory = txExecutorFactory;
     this.impersonator = impersonator;
+    this.programStateWriter = programStateWriter;
   }
 
   @Override
@@ -139,8 +142,8 @@ public final class DistributedFlowProgramRunner extends DistributedProgramRunner
 
   @Override
   protected EventHandler createEventHandler(CConfiguration cConf) {
-    return new AbortOnTimeoutEventHandler(
-      cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE), true);
+    return new TwillAppLifecycleEventHandler(
+      cConf.getLong(Constants.CFG_TWILL_NO_CONTAINER_TIMEOUT, Long.MAX_VALUE), true, programStateWriter);
   }
 
   @Override
